@@ -2,7 +2,12 @@ import 'cross-fetch/polyfill';
 import { ContractCallTyped, TypedAbiArg } from '@clarigen/core';
 import BigNumber from 'bignumber.js';
 import { prompt } from 'inquirer';
-import { AnchorMode, ContractCallOptions, makeContractCall } from 'micro-stacks/transactions';
+import {
+  AnchorMode,
+  ContractCallOptions,
+  broadcastTransaction,
+  makeContractCall,
+} from 'micro-stacks/transactions';
 import { stacksProvider } from '../src/stacks';
 import { getTxUrl, stxToUstx, ustxToStx } from '../src/utils';
 import { getStxBalance } from '../src/wallet';
@@ -13,13 +18,21 @@ import { Prints, Event } from '../src/events';
 type UnknownTx = ContractCallTyped<TypedAbiArg<unknown, string>[], unknown>;
 
 export async function broadcastAndLog(tx: UnknownTx, options: Partial<ContractCallOptions>) {
-  const provider = stacksProvider();
+  const network = getStxNetwork();
   const fee = await askFeeOrDefault(tx, options);
-  const { txId } = await provider.tx(tx, {
-    fee,
+  const _tx = await makeContractCall({
+    ...tx,
     ...options,
+    fee,
+    senderKey: getStxPrivateKey(),
+    anchorMode: AnchorMode.Any,
   });
-  console.log(`Broadcasted: ${getTxUrl(txId)}`);
+  const result = await broadcastTransaction(_tx, network);
+  // const { txId } = await provider.tx(tx, {
+  //   fee,
+  //   ...options,
+  // });
+  console.log(`Broadcasted: ${getTxUrl(result.txid)}`);
 }
 
 export async function askFeeOrDefault(tx: UnknownTx, options: Partial<ContractCallOptions>) {

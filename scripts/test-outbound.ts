@@ -9,7 +9,7 @@ async function run() {
   const provider = stacksProvider();
   const swap = await provider.ro(bridge.getOutboundSwap(swapId));
   if (!swap) throw new Error(`Expected outbound swap ${swapId} to exist.`);
-  const { address } = getOutboundPayment(swap.hash, swap.version);
+  const { address } = getOutboundPayment(swap.output);
   console.log('address', address);
 }
 

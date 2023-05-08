@@ -7,7 +7,7 @@ type ResponseType<T> = T extends TypedAbiFunction<TypedAbiArg<unknown, string>[]
   ? R
   : never;
 
-type BridgeFunctions = typeof contracts['bridge']['functions'];
+type BridgeFunctions = typeof contracts['magic']['functions'];
 
 type InboundSwapResponse = NonNullable<ResponseType<BridgeFunctions['getInboundSwap']>>;
 

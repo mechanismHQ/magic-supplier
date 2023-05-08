@@ -25,7 +25,7 @@ async function run() {
     const contracts = getContracts();
     logger.debug(
       {
-        bridge: contracts.bridge.identifier,
+        bridge: contracts.magic.identifier,
         xbtc: contracts.wrappedBitcoin.identifier,
         network: getNetworkKey(),
       },

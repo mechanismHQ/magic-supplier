@@ -37,7 +37,7 @@ async function run() {
     const outs = new Set<bigint>();
     events.forEach(event => {
       if (isEscrowEvent(event)) {
-        console.log('start', event.print.swapper, bytesToHex(event.print.txid));
+        // console.log('start', event.print.swapper, bytesToHex(event.print.txid));
         // console.log(event.print);
         ins.add(bytesToHex(event.print.txid));
       } else if (isInitiateOutboundEvent(event)) {

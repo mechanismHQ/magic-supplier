@@ -1,16 +1,16 @@
-import { NodeProvider } from '@clarigen/node';
-import { projectFactory, DEPLOYMENT_NETWORKS } from '@clarigen/core';
+import { ClarigenNodeClient } from '@clarigen/node';
+import { projectFactory, DEPLOYMENT_NETWORKS, ClarigenClient } from '@clarigen/core';
 import { getNetworkKey, getStxNetwork, getStxPrivateKey } from './config';
 import { bytesToHex } from 'micro-stacks/common';
 import { project } from './clarigen/next';
 import { createAssetInfo } from 'micro-stacks/transactions';
 
 export function getContracts() {
-  return projectFactory(project, getProjectNetworkKey());
+  return projectFactory(project, getProjectNetworkKey() as unknown as 'devnet');
 }
 
 export type Contracts = ReturnType<typeof getContracts>;
-export type BridgeContract = Contracts['bridge'];
+export type BridgeContract = Contracts['magic'];
 
 type NetworkKey = typeof DEPLOYMENT_NETWORKS[number];
 function getProjectNetworkKey(): NetworkKey {
@@ -25,14 +25,11 @@ function getProjectNetworkKey(): NetworkKey {
 }
 
 export function stacksProvider() {
-  return NodeProvider({
-    privateKey: getStxPrivateKey(),
-    network: getStxNetwork(),
-  });
+  return new ClarigenClient(getStxNetwork());
 }
 
 export function bridgeContract() {
-  return getContracts().bridge;
+  return getContracts().magic;
 }
 
 export function xbtcContract() {
@@ -59,7 +56,7 @@ export async function getOutboundFinalizedTxid(swapId: bigint | number) {
 }
 
 export async function getOutboundSwap(swapId: bigint) {
-  const { ro } = stacksProvider();
-  const swap = await ro(bridgeContract().getOutboundSwap(swapId));
+  const client = stacksProvider();
+  const swap = await client.ro(bridgeContract().getOutboundSwap(swapId));
   return swap;
 }

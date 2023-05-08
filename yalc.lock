@@ -1,0 +1,9 @@
+{
+  "version": "v1",
+  "packages": {
+    "magic-protocol": {
+      "signature": "0e8939e3d177dfd515ff90d5383e108e",
+      "file": true
+    }
+  }
+}

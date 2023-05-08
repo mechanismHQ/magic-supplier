@@ -1,7 +1,7 @@
 import ElectrumClient from 'electrum-client-sl';
 import { fetchCoreInfo, findStacksBlockAtHeight, getTransaction } from '../stacks-api';
 import { getBtcTxUrl, reverseBuffer } from '../utils';
-import { getStxAddress } from '../config';
+import { getStxAddress, getStxNetwork, getStxPrivateKey } from '../config';
 import { logger } from '../logger';
 import {
   bridgeContract,
@@ -22,6 +22,7 @@ import { fetchAccountNonce } from '../stacks-api';
 import { hexToBytes } from 'micro-stacks/common';
 import { ExtractArgs } from '@clarigen/core';
 import type { Logger } from 'pino';
+import { AnchorMode, broadcastTransaction, makeContractCall } from 'micro-stacks/transactions';
 
 type MintParams = ExtractArgs<BridgeContract['functions']['escrowSwap']>;
 type BlockParam = MintParams[0];
@@ -175,7 +176,6 @@ export async function finalizeOutbound({
     return false;
   }
   log.info(`Finalizing outbound ${key}`);
-  const provider = stacksProvider();
   const bridge = bridgeContract();
   try {
     const stxTxid = await withElectrumClient(async client => {
@@ -188,8 +188,14 @@ export async function finalizeOutbound({
         0n,
         id
       );
-      const receipt = await provider.tx(finalizeTx, { nonce });
-      return receipt.txId;
+      const stxTx = await makeContractCall({
+        ...finalizeTx,
+        senderKey: getStxPrivateKey(),
+        anchorMode: AnchorMode.Any,
+        nonce,
+      });
+      const receipt = await broadcastTransaction(stxTx, getStxNetwork());
+      return receipt.txid;
     });
     log.debug({ stxTxid }, `Submitted finalize outbound Stacks tx: ${stxTxid}`);
     await setFinalizedOutbound(client, id, stxTxid);

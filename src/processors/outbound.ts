@@ -1,4 +1,5 @@
-import { networks, payments } from 'bitcoinjs-lib';
+import { networks, payments, address as bAddress } from 'bitcoinjs-lib';
+import { Address, OutScript } from '@scure/btc-signer';
 import { bytesToBigInt } from 'micro-stacks/common';
 import { getBtcNetwork, getSupplierId } from '../config';
 import {
@@ -58,19 +59,22 @@ export async function processOutboundSwap(event: Event, redis: RedisClient) {
   };
 }
 
-export function getOutboundPayment(hash: Uint8Array, versionBytes: Uint8Array) {
-  const version = Number(bytesToBigInt(versionBytes));
-  const network = getBtcNetwork();
-  if (version === networks.bitcoin.pubKeyHash) {
-    return payments.p2pkh({ network, hash: Buffer.from(hash) });
-  } else {
-    return payments.p2sh({ network, hash: Buffer.from(hash) });
-  }
+export function getOutboundPayment(script: Uint8Array) {
+  const outScript = OutScript.decode(script);
+  const address = Address().encode(outScript);
+  return { address };
+  // const version = Number(bytesToBigInt(versionBytes));
+  // const network = getBtcNetwork();
+  // if (version === networks.bitcoin.pubKeyHash) {
+  //   return payments.p2pkh({ network, hash: Buffer.from(hash) });
+  // } else {
+  //   return payments.p2sh({ network, hash: Buffer.from(hash) });
+  // }
 }
 
 export async function sendOutbound(event: InitiateOutboundPrint) {
   const swapId = event.swapId;
-  const { address } = getOutboundPayment(event.hash, event.version);
+  const { address } = getOutboundPayment(event.output);
   if (!address) throw new Error(`Unable to get outbound address for swap ${swapId}`);
   const amount = event.sats;
   logger.debug(
