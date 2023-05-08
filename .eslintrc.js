@@ -20,7 +20,9 @@ module.exports = {
         allowNullableBoolean: true,
       },
     ],
-    'unused-imports/no-unused-imports': 'error',
+    // for more strict:
+    // 'unused-imports/no-unused-imports': [2],
+    'unused-imports/no-unused-imports': [0],
     'unused-imports/no-unused-vars': [
       'error',
       { vars: 'all', varsIgnorePattern: '^_', args: 'after-used', argsIgnorePattern: '^_' },

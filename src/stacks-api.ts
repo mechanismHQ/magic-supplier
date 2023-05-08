@@ -62,6 +62,14 @@ export async function fetchCoreInfo() {
   });
 }
 
+export async function getCurrentBlockHeight() {
+  const info = await fetchCoreInfo();
+  return {
+    btc: info.burn_block_height,
+    stx: info.stacks_tip_height,
+  };
+}
+
 interface StacksBlockByHeight {
   header: string;
   prevBlocks: string[];
