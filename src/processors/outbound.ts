@@ -63,13 +63,6 @@ export function getOutboundPayment(script: Uint8Array) {
   const outScript = OutScript.decode(script);
   const address = Address().encode(outScript);
   return { address };
-  // const version = Number(bytesToBigInt(versionBytes));
-  // const network = getBtcNetwork();
-  // if (version === networks.bitcoin.pubKeyHash) {
-  //   return payments.p2pkh({ network, hash: Buffer.from(hash) });
-  // } else {
-  //   return payments.p2sh({ network, hash: Buffer.from(hash) });
-  // }
 }
 
 export async function sendOutbound(event: InitiateOutboundPrint) {

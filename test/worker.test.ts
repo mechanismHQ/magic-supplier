@@ -1,4 +1,4 @@
-import fetchMock from 'jest-fetch-mock';
+// import fetchMock from 'jest-fetch-mock';
 import {
   eventCronQueue,
   eventQueue,
@@ -19,15 +19,8 @@ import {
 } from '../src/events';
 import { eventJobHandler } from '../src/worker/jobs';
 import { config } from 'dotenv';
+import { beforeEach, afterEach, afterAll, expect, test, describe } from 'vitest';
 config({ path: '.env.test' });
-
-beforeEach(() => {
-  fetchMock.enableMocks();
-});
-afterEach(() => {
-  fetchMock.disableMocks();
-  fetchMock.resetMocks();
-});
 
 //cleanup jobs
 afterEach(async () => {
@@ -58,7 +51,7 @@ function mockEvent<T = Event>(topic: Topics, print?: Record<string, any>) {
 
 describe('event queue', () => {
   test('finalize inbound events', async () => {
-    const result = await eventJobHandler(mockEvent('finalize-inbound'));
+    const _result = await eventJobHandler(mockEvent('finalize-inbound'));
     const jobs = await finalizeInboundQueue.getWaitingCount();
     expect(jobs).toEqual(1);
   });

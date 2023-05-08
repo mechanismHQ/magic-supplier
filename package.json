@@ -54,7 +54,7 @@
     "follow-redirects": "^1.15.1",
     "inquirer": "^8.2.0",
     "ioredis": "^5.3.2",
-    "magic-protocol": "file:.yalc/magic-protocol",
+    "magic-protocol": "^2.0.0",
     "micro-stacks": "0.3.0",
     "noble-secp256k1": "^1.2.14",
     "pino": "^8.2.0",

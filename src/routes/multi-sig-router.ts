@@ -15,8 +15,7 @@ export const multiSigRouter: FastifyPluginAsync = fp(async server => {
       }),
     },
     handler: async (request, reply) => {
-      const signer = new MultiSigSigner(server.config);
-      const psbt = await signer.signPsbt(request.body);
+      const psbt = await MultiSigSigner.signPsbt(request.body, server.config);
       await reply.send({ psbt: hex.encode(psbt) });
     },
   });

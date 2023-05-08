@@ -1,4 +1,4 @@
-import { utils } from 'noble-secp256k1';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { ECPair, payments } from 'bitcoinjs-lib';
 import { getBtcNetwork, getStxNetworkVersion } from '../src/config';
 import { bytesToHex } from 'micro-stacks/common';
@@ -19,10 +19,10 @@ async function run() {
     },
   ]);
   process.env.SUPPLIER_NETWORK = answers.networkKey;
-  const stxKey = utils.randomPrivateKey();
+  const stxKey = secp256k1.utils.randomPrivateKey();
   const stxNetwork = getStxNetworkVersion();
 
-  const btcKey = utils.randomPrivateKey();
+  const btcKey = secp256k1.utils.randomPrivateKey();
   const btcNetwork = getBtcNetwork();
   const btcSigner = ECPair.fromPrivateKey(Buffer.from(btcKey), { network: btcNetwork });
   const btcWIF = btcSigner.toWIF();

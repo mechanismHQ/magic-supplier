@@ -14,7 +14,9 @@ export const PUBLIC_KEYS = PRIVATE_KEYS.map(key => {
   return secp256k1.getPublicKey(key);
 });
 
-const ms = btc.p2wsh(btc.p2ms(2, PUBLIC_KEYS));
+const minSigners = 2;
+
+const ms = btc.p2wsh(btc.p2ms(minSigners, PUBLIC_KEYS));
 
 test('basic multi-sig route', async () => {
   const server1 = await api({
@@ -23,6 +25,7 @@ test('basic multi-sig route', async () => {
     supplierId: 0,
     networkKey: 'mocknet',
     stxSignerKey: hex.encode(PRIVATE_KEYS[0]),
+    minSigners,
   });
 
   const amount = 1000000n;
@@ -58,6 +61,17 @@ test('basic multi-sig route', async () => {
     };
   });
 
+  vi.mock('../src/multi-sig/fetchers', () => {
+    return {
+      getOutboundSwapDetails: () => ({
+        output: btc.p2pkh(PUBLIC_KEYS[0]).script,
+        sats: 1000000n,
+        createdAt: 94n,
+        swapId: 0n,
+      }),
+    };
+  });
+
   const psbt1 = hex.encode(tx.toPSBT());
 
   const res = await server1.inject({
@@ -82,6 +96,7 @@ test('basic multi-sig route', async () => {
     supplierId: 0,
     networkKey: 'mocknet',
     stxSignerKey: hex.encode(PRIVATE_KEYS[1]),
+    minSigners,
   });
 
   const res2 = await server2.inject({
@@ -108,3 +123,10 @@ test('basic multi-sig route', async () => {
 
   txFinal.finalize();
 });
+
+test.todo('Validate recipient address for swap');
+test.todo('Validate change address');
+test.todo('Validate swap not already sent');
+test.todo('Validate confirmation threshold reached');
+test.todo('Validate swap not expired');
+test.todo('Validate recipient amount');
