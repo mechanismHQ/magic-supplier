@@ -1,4 +1,3 @@
-import { prompt } from 'inquirer';
 import 'cross-fetch/polyfill';
 import { bridgeContract } from '../src/stacks';
 import { bpsToPercent, btcToSats, satsToBtc } from '../src/utils';
@@ -14,17 +13,6 @@ import { PostConditionMode } from 'micro-stacks/transactions';
 import BigNumber from 'bignumber.js';
 import { getBalances } from '../src/wallet';
 import { askStxFee, broadcastAndLog } from './helpers';
-import { bytesToHex } from 'micro-stacks/common';
-
-interface Answers {
-  inboundFee: number;
-  inboundBaseFee: number;
-  outboundFee: number;
-  outboundBaseFee: number;
-  xbtcFunds: number;
-  name: string;
-  stxFee: number;
-}
 
 async function run() {
   const bridge = bridgeContract();
@@ -47,46 +35,24 @@ async function run() {
   const xbtcBalance = balances.stx.xbtc;
   const btcBalance = balances.btc.btc;
 
-  const btcPublicKey = getPublicKey();
   console.log(`STX Address: ${stxAddress}`);
   console.log(`BTC Address: ${btcAddress}`);
-  console.log(`BTC Public key: ${bytesToHex(btcPublicKey)}`);
   console.log(`STX Balance: ${stxBalance} STX`);
   console.log(`xBTC Balance: ${xbtcBalance} xBTC`);
   console.log(`BTC Balance: ${btcBalance} BTC`);
   console.log(`Network: ${networkKey}`);
   console.log(`Stacks node: ${network.getCoreApiUrl()}`);
 
-  const answers = await prompt<Answers>([
-    { name: 'inboundFee', message: 'Inbound fee (basis points)', type: 'number', default: '10' },
-    {
-      name: 'inboundBaseFee',
-      message: 'Inbound base fee (satoshis)',
-      type: 'number',
-      default: '500',
-    },
-    { name: 'outboundFee', message: 'Outbound fee (basis points)', type: 'number', default: '10' },
-    {
-      name: 'outboundBaseFee',
-      message: 'Outbound base fee (satoshis)',
-      type: 'number',
-      default: '500',
-    },
-    {
-      name: 'xbtcFunds',
-      message: `How much xBTC do you want to supply (in xBTC)? Max: ${xbtcBalance}`,
-      type: 'number',
-    },
-  ]);
+  // const { stxFee, ustxFee: fee } = await askStxFee(stxBalance);
+  const stxFee = 1;
+  const fee = 1000000;
 
-  const { stxFee, ustxFee: fee } = await askStxFee(stxBalance);
-
-  const inboundFee = BigInt(answers.inboundFee);
-  const inboundBaseFee = BigInt(answers.inboundBaseFee);
-  const outboundFee = BigInt(answers.outboundFee);
-  const outboundBaseFee = BigInt(answers.outboundBaseFee);
+  const inboundFee = 10n; // BigInt(answers.inboundFee);
+  const inboundBaseFee = 500n; //BigInt(answers.inboundBaseFee);
+  const outboundFee = 10n; //BigInt(answers.outboundFee);
+  const outboundBaseFee = 500n; // BigInt(answers.outboundBaseFee);
   // const xbtcFunds = BigInt(answers.xbtcFunds);
-  const xbtcFunds = new BigNumber(answers.xbtcFunds).decimalPlaces(8);
+  const xbtcFunds = new BigNumber(5).decimalPlaces(8);
   const xbtcFundsSats = btcToSats(xbtcFunds.toString());
 
   console.log(`Inbound fee: ${inboundFee} bips (${bpsToPercent(inboundFee)}%)`);
@@ -99,12 +65,12 @@ async function run() {
 
   console.log(`Transaction fee: ${stxFee} STX (${fee} uSTX)`);
 
-  const { ok } = await prompt<{ ok: boolean }>([
-    { name: 'ok', type: 'confirm', message: 'Please confirm the above information is correct' },
-  ]);
+  // const networkKey = getNetworkKey();
+  if (networkKey !== 'mocknet') {
+    throw new Error('Invalid - can only be used in devnet');
+  }
 
-  if (!ok) return;
-
+  const btcPublicKey = getPublicKey();
   const registerTx = bridge.registerSupplier(
     Uint8Array.from(btcPublicKey),
     inboundFee,

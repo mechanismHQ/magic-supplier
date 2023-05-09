@@ -55,7 +55,8 @@ function wrapErrorLogger(queue: Queue) {
 export function initWorkerThread() {
   EventEmitter.defaultMaxListeners = 30;
 
-  Promise.all([validateConfig(), validateKeysMatch()]).catch(() => {
+  Promise.all([validateConfig(), validateKeysMatch()]).catch(e => {
+    console.error(e);
     logger.error('Config validation failed. Exiting.');
     process.exit(1);
   });

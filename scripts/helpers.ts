@@ -26,8 +26,13 @@ export async function broadcastAndLog(tx: UnknownTx, options: Partial<ContractCa
     fee,
     senderKey: getStxPrivateKey(),
     anchorMode: AnchorMode.Any,
+    network,
   });
   const result = await broadcastTransaction(_tx, network);
+  if ('error' in result) {
+    console.error(result);
+    throw new Error(`Failed to broadcast transaction: ${result.error}`);
+  }
   // const { txId } = await provider.tx(tx, {
   //   fee,
   //   ...options,

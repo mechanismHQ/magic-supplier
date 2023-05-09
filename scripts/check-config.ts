@@ -13,6 +13,7 @@ import { getBalances } from '../src/wallet';
 
 async function run() {
   try {
+    console.log(process.env.SUPPLIER_BTC_KEY);
     if (hasSupplierId()) {
       const config = validateConfig();
       logConfig(config);

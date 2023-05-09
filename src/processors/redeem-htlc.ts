@@ -19,8 +19,10 @@ export async function processFinalizedInbound(event: Event, client: RedisClient)
   const l = logger.child({
     txid: txidHex,
     event: {
-      preimageHex: bytesToHex(preimage),
       ...print,
+      preimage: bytesToHex(preimage),
+      hash: bytesToHex(print.hash),
+      txid: bytesToHex(print.txid),
     },
   });
   try {
