@@ -1,4 +1,4 @@
-import { getBtcAddress, getBtcNetwork, getBtcSigner, getSupplierId } from '../config';
+import { c, getBtcAddress, getBtcNetwork, getBtcSigner, getSupplierId } from '../config';
 import { Psbt, script as bScript, payments, opcodes } from 'bitcoinjs-lib';
 import { getRedeemedHTLC, setRedeemedHTLC, RedisClient } from '../store';
 import { logger as _logger } from '../logger';
@@ -48,18 +48,26 @@ export async function processFinalizedInbound(event: Event, client: RedisClient)
   }
 }
 
+/**
+ * Redeem an HTLC
+ *
+ * If the supplier is in multi-sig mode, the funds will be sent to that wallet.
+ * Otherwise, the funds are sent to the p2pkh address of the supplier.
+ *
+ */
 export async function redeem(txid: string, preimage: Uint8Array) {
   return withElectrumClient(async client => {
     const tx = await client.blockchain_transaction_get(txid, true);
     const txHex = Buffer.from(tx.hex, 'hex');
     const bridge = bridgeContract();
+    const config = c();
     const provider = stacksProvider();
     const swap = await provider.roOk(bridge.getFullInbound(hexToBytes(txid)));
-    const network = getBtcNetwork();
+    const network = config.btcNetwork;
 
     const psbt = new Psbt({ network });
-    const signer = getBtcSigner();
-    const address = getBtcAddress();
+    const signer = config.btcSigner;
+    const address = config.btcMainWallet;
     const weight = 312;
     const feeRate = await getFeeRate(client);
     const fee = weight * feeRate;

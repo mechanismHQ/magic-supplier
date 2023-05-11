@@ -3,7 +3,7 @@ import BasicAuth, { FastifyBasicAuthOptions } from '@fastify/basic-auth';
 import { logger } from './logger';
 import { bullRoute } from './routes/bull-adapter';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod';
-import { ConfigInit } from './config-v2';
+import { ConfigInit } from './config';
 import { ConfigPlugin } from './plugins/config';
 import { multiSigRouter } from './routes/multi-sig-router';
 

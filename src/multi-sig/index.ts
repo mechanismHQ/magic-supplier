@@ -1,6 +1,6 @@
 import { hex } from '@scure/base';
 import * as btc from '@scure/btc-signer';
-import { ServerConfig } from '../config-v2';
+import { ServerConfig } from '../config';
 import { wasOutboundSent } from './store';
 import { getOutboundSwapDetails, OutboundSwapDetails } from './fetchers';
 import { getCurrentBlockHeight } from '../stacks-api';
@@ -46,7 +46,7 @@ export class MultiSigSigner {
     const changeOutput = tx.getOutput(1);
     if (typeof changeOutput === 'undefined') throw new Error('Missing change output');
 
-    if (hex.encode(changeOutput.script!) !== hex.encode(this.p2ms.script)) {
+    if (!equalBytes(changeOutput.script!, this.config.p2ms.script)) {
       throw new Error('Invalid change output');
     }
     if (tx.outputsLength !== 2) {

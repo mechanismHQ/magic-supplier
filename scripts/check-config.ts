@@ -1,7 +1,7 @@
 import 'cross-fetch/polyfill';
 import {
   getNetworkKey,
-  hasSupplierId,
+  c,
   logConfig,
   validateConfig,
   validateKeys,
@@ -13,14 +13,14 @@ import { getBalances } from '../src/wallet';
 
 async function run() {
   try {
-    console.log(process.env.SUPPLIER_BTC_KEY);
-    if (hasSupplierId()) {
-      const config = validateConfig();
-      logConfig(config);
-      await validateKeysMatch();
+    const config = c();
+    if (config.hasSupplierId()) {
+      const configKeys = config.validateConfig();
+      config.logConfig(configKeys);
+      await config.validateKeysMatch();
     } else {
-      const config = validateKeys();
-      logConfig(config);
+      const configKeys = config.validateKeys();
+      logConfig(configKeys);
       logger.debug('No SUPPLIER_ID - skipping supplier registration check.');
     }
     const contracts = getContracts();
@@ -28,7 +28,7 @@ async function run() {
       {
         bridge: contracts.magic.identifier,
         xbtc: contracts.wrappedBitcoin.identifier,
-        network: getNetworkKey(),
+        network: config.networkKey,
       },
       'Configured contracts:'
     );

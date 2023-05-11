@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin';
 import { FastifyPlugin, FastifyPluginAsync } from '../routes/api-types';
-import { ConfigInit, ServerConfig } from '../config-v2';
+import { ConfigInit, ServerConfig } from '../config';
 // import { FastifyPluginAsync } from 'fastify';
 
 declare module 'fastify' {

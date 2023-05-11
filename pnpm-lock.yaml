@@ -45,7 +45,7 @@ specifiers:
   ioredis: ^5.3.2
   jest: ^27.0.3
   jest-fetch-mock: 3.0.3
-  magic-protocol: file:.yalc/magic-protocol
+  magic-protocol: file:../v2
   micro-stacks: 0.3.0
   noble-secp256k1: ^1.2.14
   nodemon: ^2.0.15
@@ -84,7 +84,7 @@ dependencies:
   follow-redirects: 1.15.1
   inquirer: 8.2.0
   ioredis: 5.3.2
-  magic-protocol: file:.yalc/magic-protocol
+  magic-protocol: file:../v2
   micro-stacks: 0.3.0
   noble-secp256k1: 1.2.14
   pino: 8.2.0
@@ -8128,8 +8128,8 @@ packages:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}
     dev: false
 
-  file:.yalc/magic-protocol:
-    resolution: {directory: .yalc/magic-protocol, type: directory}
+  file:../v2:
+    resolution: {directory: ../v2, type: directory}
     name: magic-protocol
     version: 2.0.0
     dependencies:
