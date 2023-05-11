@@ -1,5 +1,5 @@
 import ElectrumClient, { Unspent } from 'electrum-client-sl';
-import { btcToSats, getBtcTxUrl, getScriptHash, isNotNullish, shiftInt } from './utils';
+import { btcToSats, getBtcTxUrl, getScriptHash, isNotNullish, shiftInt } from '../utils';
 import {
   getBtcPayment,
   getBtcNetwork,
@@ -8,37 +8,15 @@ import {
   getStxNetwork,
   getStxAddress,
   getSupplierId,
-} from './config';
+} from '../config';
 import { Psbt, Transaction } from 'bitcoinjs-lib';
-import { logger } from './logger';
+import { logger } from '../logger';
 import { fetchAccountBalances } from 'micro-stacks/api';
-import { bridgeContract, stacksProvider, xbtcAssetId } from './stacks';
+import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
 import BigNumber from 'bignumber.js';
 import { hexToBytes } from 'micro-stacks/common';
-
-export const electrumClient = () => {
-  const envConfig = getElectrumConfig();
-  const electrumConfig = {
-    ...envConfig,
-  };
-  return new ElectrumClient(electrumConfig.host, electrumConfig.port, electrumConfig.protocol);
-};
-
-export async function withElectrumClient<T = void>(
-  cb: (client: ElectrumClient) => Promise<T>
-): Promise<T> {
-  const client = electrumClient();
-  await client.connect();
-  try {
-    const res = await cb(client);
-    await client.close();
-    return res;
-  } catch (error) {
-    console.error(`Error from withElectrumConfig`, error);
-    await client.close();
-    throw error;
-  }
-}
+export * from './utils';
+import { electrumClient, withElectrumClient, listUnspent } from './utils';
 
 // Get the vB size of a BTC transaction.
 // Calculations assume p2pkh inputs
@@ -49,16 +27,9 @@ export function txWeight(inputs: number, outputs: number) {
   return overhead + outputSize + inputSize;
 }
 
-export async function listUnspent(client: ElectrumClient) {
-  const { output } = getBtcPayment();
-  if (!output) throw new Error('Unable to get output for operator wallet.');
+export type TxWeightFunction = (inputs: number, outputs: number) => bigint;
 
-  const scriptHash = getScriptHash(output);
-  const unspents = await client.blockchain_scripthash_listunspent(scriptHash.toString('hex'));
-  return unspents;
-}
-
-export async function selectCoins(amount: bigint, client: ElectrumClient) {
+export async function selectCoins(amount: bigint, client: ElectrumClient, txWeightFn = txWeight) {
   const unspents = await listUnspent(client);
   const sorted = unspents.sort((a, b) => (a.value < b.value ? 1 : -1));
 
@@ -74,7 +45,7 @@ export async function selectCoins(amount: bigint, client: ElectrumClient) {
       hex: Buffer.from(txHex, 'hex'),
     });
     coinAmount += BigInt(utxo.value);
-    const size = txWeight(selected.length, 2);
+    const size = txWeightFn(selected.length, 2);
     const fee = feeRate * size;
     if (coinAmount > amount + fee + 5500n) {
       filled = true;

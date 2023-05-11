@@ -20,12 +20,15 @@ const ms = btc.p2wsh(btc.p2ms(minSigners, PUBLIC_KEYS));
 
 test('basic multi-sig route', async () => {
   const server1 = await api({
-    msPublicKeys: PUBLIC_KEYS.map(hex.encode),
+    ms: {
+      msPublicKeys: PUBLIC_KEYS.map(hex.encode),
+      minSigners,
+      mode: 'follower',
+    },
+    stxSignerKey: hex.encode(PRIVATE_KEYS[0]),
     btcSignerKey: hex.encode(PRIVATE_KEYS[0]),
     supplierId: 0,
     networkKey: 'mocknet',
-    stxSignerKey: hex.encode(PRIVATE_KEYS[0]),
-    minSigners,
   });
 
   const amount = 1000000n;
@@ -91,12 +94,15 @@ test('basic multi-sig route', async () => {
   const { psbt } = res.json<{ psbt: string }>();
 
   const server2 = await api({
-    msPublicKeys: PUBLIC_KEYS.map(hex.encode),
+    ms: {
+      msPublicKeys: PUBLIC_KEYS.map(hex.encode),
+      minSigners,
+      mode: 'follower',
+    },
     btcSignerKey: hex.encode(PRIVATE_KEYS[1]),
     supplierId: 0,
     networkKey: 'mocknet',
     stxSignerKey: hex.encode(PRIVATE_KEYS[1]),
-    minSigners,
   });
 
   const res2 = await server2.inject({
