@@ -104,3 +104,10 @@ export function pkhTxWeight(inputs: number, output: Uint8Array) {
 
   return txVBytes;
 }
+
+export function pkhCoinSelectWeightFn(output: Uint8Array) {
+  return (inputs: number) => {
+    const w = pkhTxWeight(inputs, output);
+    return BigInt(w.toFixed(0));
+  };
+}

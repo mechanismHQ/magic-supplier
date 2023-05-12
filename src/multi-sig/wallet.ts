@@ -1,6 +1,7 @@
 import { c } from '../config';
 import * as btc from '@scure/btc-signer';
-import { getTxOverheadVBytes, outputWeight } from '../wallet';
+import { getTxOverheadVBytes, outputWeight, selectCoins } from '../wallet';
+import ElectrumClient, { Unspent } from 'electrum-client-sl';
 
 function getSizeOfScriptLengthElement(length: number) {
   if (length < 75) {
@@ -55,8 +56,44 @@ export function msTxWeight(inputs: number, output: Uint8Array) {
   return txVBytes;
 }
 
-export function coinSelectWeightFn(output: Uint8Array) {
+export function msCoinSelectWeightFn(output: Uint8Array) {
   return (inputs: number) => {
-    return msTxWeight(inputs, output);
+    const w = msTxWeight(inputs, output);
+    return BigInt(w.toFixed(0));
   };
+}
+
+export async function constructUnsignedTx({
+  amount,
+  recipient,
+  client,
+}: {
+  amount: bigint;
+  recipient: Uint8Array;
+  client: ElectrumClient;
+}) {
+  const tx = new btc.Transaction({ version: 2 });
+  const weightFn = msCoinSelectWeightFn(recipient);
+  const { coins, fee, total } = await selectCoins(amount, client, weightFn);
+  const ms = c().p2ms;
+  coins.forEach(coin => {
+    tx.addInput({
+      txid: coin.tx_hash,
+      index: coin.tx_pos,
+      witnessScript: ms.witnessScript,
+    });
+  });
+
+  const change = total - amount - fee;
+
+  tx.addOutput({
+    script: recipient,
+    amount,
+  });
+  tx.addOutput({
+    script: ms.script,
+    amount: change,
+  });
+
+  return tx;
 }

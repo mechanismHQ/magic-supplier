@@ -72,7 +72,7 @@ async function run() {
 
   const btcPublicKey = getPublicKey();
   const registerTx = bridge.registerSupplier(
-    Uint8Array.from(btcPublicKey),
+    btcPublicKey,
     inboundFee,
     outboundFee,
     outboundBaseFee,

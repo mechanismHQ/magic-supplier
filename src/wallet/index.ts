@@ -8,6 +8,7 @@ import {
   getStxNetwork,
   getStxAddress,
   getSupplierId,
+  c,
 } from '../config';
 import { Psbt, Transaction } from 'bitcoinjs-lib';
 import { logger } from '../logger';
@@ -16,20 +17,25 @@ import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
 import BigNumber from 'bignumber.js';
 import { hexToBytes } from 'micro-stacks/common';
 export * from './utils';
-import { electrumClient, withElectrumClient, listUnspent } from './utils';
+import { electrumClient, withElectrumClient, listUnspent, pkhCoinSelectWeightFn } from './utils';
+import { Address, OutScript } from '@scure/btc-signer';
 
 // Get the vB size of a BTC transaction.
 // Calculations assume p2pkh inputs
-export function txWeight(inputs: number, outputs: number) {
-  const overhead = 10n;
-  const outputSize = 34n * BigInt(outputs);
-  const inputSize = 148n * BigInt(inputs);
-  return overhead + outputSize + inputSize;
-}
+// export function txWeight(inputs: number) {
+//   const overhead = 10n;
+//   const outputSize = 34n * BigInt(outputs);
+//   const inputSize = 148n * BigInt(inputs);
+//   return overhead + outputSize + inputSize;
+// }
 
-export type TxWeightFunction = (inputs: number, outputs: number) => bigint;
+export type TxWeightFunction = (inputs: number) => bigint;
 
-export async function selectCoins(amount: bigint, client: ElectrumClient, txWeightFn = txWeight) {
+export async function selectCoins(
+  amount: bigint,
+  client: ElectrumClient,
+  txWeightFn: TxWeightFunction
+) {
   const unspents = await listUnspent(client);
   const sorted = unspents.sort((a, b) => (a.value < b.value ? 1 : -1));
 
@@ -45,7 +51,7 @@ export async function selectCoins(amount: bigint, client: ElectrumClient, txWeig
       hex: Buffer.from(txHex, 'hex'),
     });
     coinAmount += BigInt(utxo.value);
-    const size = txWeightFn(selected.length, 2);
+    const size = txWeightFn(selected.length);
     const fee = feeRate * size;
     if (coinAmount > amount + fee + 5500n) {
       filled = true;
@@ -59,7 +65,7 @@ export async function selectCoins(amount: bigint, client: ElectrumClient, txWeig
 
   return {
     coins: selected,
-    fee: feeRate * txWeight(selected.length, 2),
+    fee: feeRate * txWeightFn(selected.length),
     total: coinAmount,
   };
 }
@@ -73,7 +79,10 @@ interface SendBtc {
 
 export async function sendBtc(opts: SendBtc) {
   const { client, ...logOpts } = opts;
-  const { coins, fee, total } = await selectCoins(opts.amount, client);
+  const config = c();
+  const outputScript = OutScript.encode(Address(config.scureBtcNetwork).decode(opts.recipient));
+  const weightFn = pkhCoinSelectWeightFn(outputScript);
+  const { coins, fee, total } = await selectCoins(opts.amount, client, weightFn);
   const network = getBtcNetwork();
 
   const psbt = new Psbt({ network });

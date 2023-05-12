@@ -7,6 +7,9 @@ import { makeStxAddress } from './utils';
 import { z } from 'zod';
 import * as btc from '@scure/btc-signer';
 import { hex } from '@scure/base';
+import { secp256k1 } from '@noble/curves/secp256k1';
+import { equalBytes } from 'micro-packed';
+import { hexToBytes } from '@noble/curves/abstract/utils';
 
 // const minSignersSchema = z.number();
 // const msPublicKeysSchema = z.array(z.string());
@@ -84,8 +87,6 @@ export class ServerConfig {
     this.stxSignerKey = config.stxSignerKey;
     this.networkKey = config.networkKey;
     this.ms = config.ms;
-    // this.msPublicKeys = config.msPublicKeys;
-    // this.minSigners = config.minSigners;
   }
 
   static i() {
@@ -226,7 +227,8 @@ export class ServerConfig {
   }
 
   get publicKey() {
-    return this.btcSigner.publicKey;
+    const priv = btc.WIF(this.scureBtcNetwork).decode(this.btcSignerKey);
+    return secp256k1.getPublicKey(priv);
   }
 
   hasSupplierId() {
@@ -234,7 +236,14 @@ export class ServerConfig {
   }
 
   get btcPayment() {
-    return payments.p2pkh({ pubkey: this.publicKey, network: this.btcNetwork });
+    return payments.p2pkh({ pubkey: Buffer.from(this.publicKey), network: this.btcNetwork });
+  }
+
+  get btcMainOutput() {
+    if (this.hasMultisig()) {
+      return this.p2ms.script;
+    }
+    return btc.p2pkh(hex.decode(this.btcSignerKey)).script;
   }
 
   get btcAddress() {
@@ -304,6 +313,7 @@ export class ServerConfig {
 
   validateConfig() {
     const keys = this.validateKeys();
+    this.validateMultisigConfig();
     return {
       ...keys,
       supplierId: this.supplierId,
@@ -316,6 +326,24 @@ export class ServerConfig {
       { ...config, electrumConfig: this.electrumConfig, topic: 'start' },
       'Server config:'
     );
+  }
+
+  validateMultisigConfig() {
+    if (this.ms) {
+      // ensure this signer's public key is in `pubkeys`
+      const pub = this.publicKey;
+      const pubKeysBytes = this.ms.msPublicKeys.map(hexToBytes);
+      const foundIndex = pubKeysBytes.findIndex(pk => {
+        return equalBytes(pk, pub);
+      });
+      if (foundIndex === -1) {
+        throw new Error('Invalid config: this signer is not in the multisig group');
+      }
+      if (this.ms.mode === 'leader' && !equalBytes(pub, pubKeysBytes[0])) {
+        throw new Error('Invalid config: leader must be the first signer');
+      }
+    }
+    return true;
   }
 
   async validateKeysMatch() {
@@ -336,13 +364,15 @@ export class ServerConfig {
       throw new Error(`STX key invalid: expected ${supplier.controller} to equal ${stxAddress}`);
     }
 
-    const supplierBtc = payments.p2pkh({
-      pubkey: Buffer.from(supplier.publicKey),
-      network: this.btcNetwork,
-    }).address!;
+    const supplierBtc = btc.p2pkh(supplier.publicKey, this.scureBtcNetwork).address!;
+    // const supplierBtc = payments.p2pkh({
+    //   pubkey: Buffer.from(supplier.publicKey),
+    //   network: this.btcNetwork,
+    // }).address!;
     if (supplierBtc !== btcAddress) {
       throw new Error(`BTC key invalid: expected ${supplierBtc} to equal ${btcAddress}`);
     }
+
     return true;
   }
 }

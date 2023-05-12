@@ -106,7 +106,7 @@ async function run() {
   if (!ok) return;
 
   const registerTx = bridge.registerSupplier(
-    Uint8Array.from(btcPublicKey),
+    btcPublicKey,
     inboundFee,
     outboundFee,
     outboundBaseFee,
