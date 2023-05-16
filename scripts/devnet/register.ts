@@ -1,6 +1,6 @@
 import 'cross-fetch/polyfill';
-import { bridgeContract } from '../src/stacks';
-import { bpsToPercent, btcToSats, satsToBtc } from '../src/utils';
+import { bridgeContract } from '../../src/stacks';
+import { bpsToPercent, btcToSats, satsToBtc } from '../../src/utils';
 import {
   getBtcAddress,
   getNetworkKey,
@@ -8,11 +8,11 @@ import {
   getStxAddress,
   getStxNetwork,
   validateKeys,
-} from '../src/config';
+} from '../../src/config';
 import { PostConditionMode } from 'micro-stacks/transactions';
 import BigNumber from 'bignumber.js';
-import { getBalances } from '../src/wallet';
-import { askStxFee, broadcastAndLog } from './helpers';
+import { getBalances } from '../../src/wallet';
+import { askStxFee, broadcastAndLog } from '../helpers';
 
 async function run() {
   const bridge = bridgeContract();

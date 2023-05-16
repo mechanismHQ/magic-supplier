@@ -4,23 +4,14 @@ import BigNumber from 'bignumber.js';
 import { bytesToHex, IntegerType } from 'micro-stacks/common';
 import { getNetworkKey, getStxNetwork } from './config';
 
-export function reverseBuffer(buffer: Buffer): Buffer {
-  if (buffer.length < 1) return buffer;
-  let j = buffer.length - 1;
-  let tmp = 0;
-  for (let i = 0; i < buffer.length / 2; i++) {
-    tmp = buffer[i];
-    buffer[i] = buffer[j];
-    buffer[j] = tmp;
-    j--;
-  }
-  return buffer;
+export function reverseBuffer(buffer: Uint8Array): Uint8Array {
+  return Uint8Array.from(buffer).reverse();
 }
 
-export function getScriptHash(output: Buffer): Buffer {
-  const uintOutput = Uint8Array.from(output);
-  const hash = hashSha256(uintOutput);
-  const reversed = reverseBuffer(Buffer.from(hash));
+export function getScriptHash(output: Uint8Array): Uint8Array {
+  // const uintOutput = Uint8Array.from(output);
+  const hash = hashSha256(output);
+  const reversed = reverseBuffer(hash);
   return reversed;
 }
 

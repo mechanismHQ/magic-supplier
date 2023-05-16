@@ -67,8 +67,7 @@ export async function redeem(txid: string, preimage: Uint8Array) {
 
     const psbt = new Psbt({ network });
     const signer = config.btcSigner;
-    const address = config.btcMainWallet;
-    const weight = 312;
+    const weight = 351;
     const feeRate = await getFeeRate(client);
     const fee = weight * feeRate;
 
@@ -80,7 +79,7 @@ export async function redeem(txid: string, preimage: Uint8Array) {
     });
 
     psbt.addOutput({
-      address,
+      script: Buffer.from(config.btcMainOutput),
       value: Number(swap.sats) - fee,
     });
     await psbt.signInputAsync(0, signer);

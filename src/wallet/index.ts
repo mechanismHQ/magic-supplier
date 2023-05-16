@@ -18,7 +18,9 @@ import BigNumber from 'bignumber.js';
 import { hexToBytes } from 'micro-stacks/common';
 export * from './utils';
 import { electrumClient, withElectrumClient, listUnspent, pkhCoinSelectWeightFn } from './utils';
-import { Address, OutScript } from '@scure/btc-signer';
+import { Address, OutScript, Transaction as ScureTransaction } from '@scure/btc-signer';
+import { sendBtcMultiSig } from '../multi-sig/wallet';
+import { hex } from '@scure/base';
 
 // Get the vB size of a BTC transaction.
 // Calculations assume p2pkh inputs
@@ -72,16 +74,29 @@ export async function selectCoins(
 
 interface SendBtc {
   amount: bigint;
-  recipient: string;
+  recipient: Uint8Array;
   client: ElectrumClient;
+  swapId: bigint;
   maxSize?: number;
 }
 
 export async function sendBtc(opts: SendBtc) {
+  const config = c();
+  let txid: string;
+  if (config.hasMultisig()) {
+    txid = await sendBtcMultiSig(opts);
+  } else {
+    txid = await sendBtcSingleSig(opts);
+  }
+  return txid;
+}
+
+export async function sendBtcSingleSig(opts: SendBtc) {
   const { client, ...logOpts } = opts;
   const config = c();
-  const outputScript = OutScript.encode(Address(config.scureBtcNetwork).decode(opts.recipient));
-  const weightFn = pkhCoinSelectWeightFn(outputScript);
+  const recipient = Address(config.scureBtcNetwork).encode(OutScript.decode(opts.recipient));
+  // const outputScript = OutScript.encode(Address(config.scureBtcNetwork).decode(opts.recipient));
+  const weightFn = pkhCoinSelectWeightFn(opts.recipient);
   const { coins, fee, total } = await selectCoins(opts.amount, client, weightFn);
   const network = getBtcNetwork();
 
@@ -102,7 +117,7 @@ export async function sendBtc(opts: SendBtc) {
 
   const change = total - opts.amount - fee;
   psbt.addOutput({
-    address: opts.recipient,
+    address: recipient,
     value: Number(opts.amount),
   });
   psbt.addOutput({
@@ -133,7 +148,7 @@ export async function sendBtc(opts: SendBtc) {
   if (txid) {
     logger.debug({ ...logOpts, txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
   }
-  return final;
+  return final.getId();
 }
 
 export async function tryBroadcast(client: ElectrumClient, tx: Transaction) {
@@ -154,12 +169,44 @@ export async function tryBroadcast(client: ElectrumClient, tx: Transaction) {
   } catch (error) {
     logger.error({ broadcastError: error, txId: id }, `Error broadcasting: ${id}`);
     if (typeof error === 'string' && !error.includes('Transaction already in block chain')) {
-      if (error.includes('Transaction already in block chain')) {
+      if (
+        error.includes('Transaction already in block chain') ||
+        error.includes('inputs-missingorspent')
+      ) {
         logger.debug(`Already broadcasted redeem in ${id}`);
+        await client.close();
         return;
       }
-      if (error.includes('inputs-missingorspent')) {
+    }
+    await client.close();
+    throw error;
+  }
+}
+
+export async function tryBroadcastScure(client: ElectrumClient, tx: ScureTransaction) {
+  const id = tx.id;
+  try {
+    await client.blockchain_transaction_broadcast(tx.hex);
+    const amount = Number(tx.getOutput(0).amount!);
+    logger.info(
+      {
+        topic: 'btcBroadcast',
+        txid: id,
+        txUrl: getBtcTxUrl(id),
+        amount,
+      },
+      `Broadcasted BTC tx ${id}`
+    );
+    return id;
+  } catch (error) {
+    logger.error({ broadcastError: error, txId: id }, `Error broadcasting: ${id}`);
+    if (typeof error === 'string' && !error.includes('Transaction already in block chain')) {
+      if (
+        error.includes('Transaction already in block chain') ||
+        error.includes('inputs-missingorspent')
+      ) {
         logger.debug(`Already broadcasted redeem in ${id}`);
+        await client.close();
         return;
       }
     }
@@ -183,11 +230,12 @@ export async function getFeeRate(client: ElectrumClient) {
 
 export async function getBtcBalance() {
   const balances = await withElectrumClient(async client => {
-    const { output } = getBtcPayment();
-    if (!output) throw new Error('Unable to get output for operator wallet.');
+    // const { output } = getBtcPayment();
+    const output = c().btcMainOutput;
+    // if (!output) throw new Error('Unable to get output for operator wallet.');
 
-    const scriptHash = getScriptHash(output);
-    const balance = await client.blockchain_scripthash_getBalance(scriptHash.toString('hex'));
+    const scriptHash = getScriptHash(Buffer.from(output));
+    const balance = await client.blockchain_scripthash_getBalance(hex.encode(scriptHash));
     const { confirmed, unconfirmed } = balance;
     const total = confirmed + unconfirmed;
     const btc = shiftInt(total, -8).toNumber();

@@ -8,6 +8,7 @@ import {
   getStxNetwork,
   getStxAddress,
   getSupplierId,
+  c,
 } from '../config';
 import { Psbt, Transaction } from 'bitcoinjs-lib';
 import { logger } from '../logger';
@@ -16,6 +17,7 @@ import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
 import BigNumber from 'bignumber.js';
 import { hexToBytes } from 'micro-stacks/common';
 import { OutScript } from '@scure/btc-signer';
+import { hex } from '@scure/base';
 
 export const electrumClient = () => {
   const envConfig = getElectrumConfig();
@@ -42,11 +44,12 @@ export async function withElectrumClient<T = void>(
 }
 
 export async function listUnspent(client: ElectrumClient) {
-  const { output } = getBtcPayment();
-  if (!output) throw new Error('Unable to get output for operator wallet.');
+  // const { output } = getBtcPayment();
+  const output = c().btcMainOutput;
+  // if (!output) throw new Error('Unable to get output for operator wallet.');
 
   const scriptHash = getScriptHash(output);
-  const unspents = await client.blockchain_scripthash_listunspent(scriptHash.toString('hex'));
+  const unspents = await client.blockchain_scripthash_listunspent(hex.encode(scriptHash));
   return unspents;
 }
 

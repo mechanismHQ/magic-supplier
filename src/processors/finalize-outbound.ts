@@ -23,6 +23,7 @@ import { hexToBytes } from 'micro-stacks/common';
 import { ExtractArgs } from '@clarigen/core';
 import type { Logger } from 'pino';
 import { AnchorMode, broadcastTransaction, makeContractCall } from 'micro-stacks/transactions';
+import * as btc from '@scure/btc-signer';
 
 type MintParams = ExtractArgs<BridgeContract['functions']['escrowSwap']>;
 type BlockParam = MintParams[0];
@@ -51,7 +52,7 @@ async function txData(client: ElectrumClient, txid: string) {
     height: BigInt(stacksHeight),
   };
 
-  const txHex = Buffer.from(tx.hex, 'hex');
+  const txHexWithoutWitness = btc.Transaction.fromRaw(hexToBytes(tx.hex)).toBytes(true, false);
 
   const proofArg: ProofParam = {
     hashes: hashes,
@@ -63,7 +64,7 @@ async function txData(client: ElectrumClient, txid: string) {
     txHex: tx.hex,
     proof: proofArg,
     block: blockArg,
-    tx: txHex,
+    tx: txHexWithoutWitness,
     prevBlocks: prevBlocks.map(b => hexToBytes(b)),
   };
 }

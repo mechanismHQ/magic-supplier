@@ -17,7 +17,7 @@ import { getBalances } from '../wallet';
 import { EventEmitter } from 'events';
 import { eventCronJob, eventJobHandler } from './jobs';
 import { Queue } from 'bull';
-import { validateConfig, validateKeysMatch } from '../config';
+import { validateConfig, validateKeysMatch, c } from '../config';
 
 export function deserializeJob<T>(job: { data: { event: SerializedEvent<T> } }) {
   return deserializeEvent(job.data.event);
@@ -110,7 +110,9 @@ export function initWorkerThread() {
     };
   });
 
-  void finalizeOutboundQueue.add({}, { repeat: { every: 120_000 } });
-  void eventCronQueue.add({}, { repeat: { every: 120_000 } });
+  const cronTime = c().networkKey === 'mocknet' ? 30_000 : 120_000;
+
+  void finalizeOutboundQueue.add({}, { repeat: { every: cronTime } });
+  void eventCronQueue.add({}, { repeat: { every: cronTime } });
   void balancesQueue.add({}, { repeat: { every: 300_000 } });
 }

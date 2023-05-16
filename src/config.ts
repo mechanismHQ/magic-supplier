@@ -109,7 +109,7 @@ export class ServerConfig {
     return value;
   }
 
-  static load(partialConfig?: Partial<ConfigInit>) {
+  static load(partialConfig?: Partial<ConfigInit>, override = true) {
     const btcSignerKey = partialConfig?.btcSignerKey || this.getEnv(ConfigEnv.BtcKey);
     const supplierId = partialConfig?.supplierId ?? parseInt(this.getEnv(ConfigEnv.Id), 10);
     const stxSignerKey = partialConfig?.stxSignerKey || this.getEnv(ConfigEnv.StxKey);
@@ -142,7 +142,9 @@ export class ServerConfig {
     const config = serverConfigSchema.parse(configValues);
 
     const instance = new ServerConfig(config);
-    ServerConfig.instance = instance;
+    if (override) {
+      ServerConfig.instance = instance;
+    }
     return instance;
   }
 
@@ -158,7 +160,7 @@ export class ServerConfig {
 
   get p2ms() {
     const { msPublicKeys, minSigners } = this.multisigConfig;
-    return btc.p2wsh(btc.p2ms(minSigners, msPublicKeys.map(hex.decode)));
+    return btc.p2wsh(btc.p2ms(minSigners, msPublicKeys.map(hex.decode)), this.scureBtcNetwork);
   }
 
   hasMultisig() {
@@ -188,7 +190,7 @@ export class ServerConfig {
   get btcNetwork() {
     switch (this.networkKey) {
       case 'mocknet':
-        return networks.regtest;
+        return networks.testnet;
       case 'mainnet':
         return networks.bitcoin;
       case 'testnet':
@@ -200,6 +202,12 @@ export class ServerConfig {
 
   get scureBtcNetwork() {
     if (this.networkKey === 'mainnet') return btc.NETWORK;
+    if (this.networkKey === 'mocknet') {
+      return {
+        ...btc.TEST_NETWORK,
+        bech32: 'bcrt',
+      };
+    }
     return btc.TEST_NETWORK;
   }
 
@@ -221,9 +229,10 @@ export class ServerConfig {
   }
 
   get btcPrivateKey() {
-    const signer = this.btcSigner;
-    if (!signer.privateKey) throw new Error('Invalid private key in SUPPLIER_BTC_KEY');
-    return signer.privateKey;
+    return btc.WIF(this.scureBtcNetwork).decode(this.btcSignerKey);
+    // const signer = this.btcSigner;
+    // if (!signer.privateKey) throw new Error('Invalid private key in SUPPLIER_BTC_KEY');
+    // return signer.privateKey;
   }
 
   get publicKey() {
@@ -305,7 +314,7 @@ export class ServerConfig {
 
   validateKeys() {
     return {
-      btcAddress: this.btcAddress,
+      btcAddress: this.btcMainWallet,
       stxAddress: this.stxAddress,
       btcNetwork: this.networkKey,
     };
@@ -349,6 +358,9 @@ export class ServerConfig {
   async validateKeysMatch() {
     const stxAddress = this.stxAddress;
     const btcAddress = this.btcAddress;
+    if (this.ms && this.ms.mode === 'follower') {
+      return true;
+    }
     let id: number;
     try {
       id = this.supplierId;

@@ -1,7 +1,12 @@
 import { c } from '../config';
 import * as btc from '@scure/btc-signer';
-import { getTxOverheadVBytes, outputWeight, selectCoins } from '../wallet';
+import { getTxOverheadVBytes, outputWeight, selectCoins, tryBroadcastScure } from '../wallet';
 import ElectrumClient, { Unspent } from 'electrum-client-sl';
+import { hex } from '@scure/base';
+import { logger } from '../logger';
+import { getBtcTxUrl, isNotNullish } from '../utils';
+// import { fetch } from 'cross-fetch';
+import axios from 'axios';
 
 function getSizeOfScriptLengthElement(length: number) {
   if (length < 75) {
@@ -63,7 +68,7 @@ export function msCoinSelectWeightFn(output: Uint8Array) {
   };
 }
 
-export async function constructUnsignedTx({
+export async function constructUnsignedMsTx({
   amount,
   recipient,
   client,
@@ -72,7 +77,7 @@ export async function constructUnsignedTx({
   recipient: Uint8Array;
   client: ElectrumClient;
 }) {
-  const tx = new btc.Transaction({ version: 2 });
+  const tx = new btc.Transaction();
   const weightFn = msCoinSelectWeightFn(recipient);
   const { coins, fee, total } = await selectCoins(amount, client, weightFn);
   const ms = c().p2ms;
@@ -81,6 +86,10 @@ export async function constructUnsignedTx({
       txid: coin.tx_hash,
       index: coin.tx_pos,
       witnessScript: ms.witnessScript,
+      witnessUtxo: {
+        script: ms.script,
+        amount: BigInt(coin.value),
+      },
     });
   });
 
@@ -96,4 +105,95 @@ export async function constructUnsignedTx({
   });
 
   return tx;
+}
+
+export async function sendBtcMultiSig({
+  amount,
+  recipient,
+  client,
+  swapId,
+  maxSize,
+}: {
+  amount: bigint;
+  recipient: Uint8Array;
+  client: ElectrumClient;
+  swapId: bigint;
+  maxSize?: number;
+}) {
+  const unsigned = await constructUnsignedMsTx({ amount, recipient, client });
+  const config = c();
+  const ms = config.multisigConfig;
+  if (ms.mode !== 'leader') {
+    throw new Error('Only leader can initiate send');
+  }
+  unsigned.sign(config.btcPrivateKey);
+
+  let psbtHex = hex.encode(unsigned.toPSBT());
+
+  const swapIdN = Number(swapId);
+  let numSigs = 1;
+
+  for (let i = 0; i < ms.followers.length; i++) {
+    if (numSigs === ms.minSigners) {
+      break;
+    }
+    const urlBase = ms.followers[i];
+    const url = `${urlBase}/multi-sig/sign-psbt`;
+    try {
+      const r = await axios.post(
+        url,
+        {
+          psbt: psbtHex,
+          swapId: swapIdN,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      if (r.status === 200) {
+        const { psbt } = r.data as { psbt: string };
+        // const { psbt } = (await res.json()) as { psbt: string };
+        numSigs++;
+        psbtHex = psbt;
+      }
+    } catch (error) {
+      logger.error(
+        {
+          swapId: swapIdN,
+          follower: urlBase,
+        },
+        `Unable to get signature from follower`
+      );
+    }
+  }
+
+  if (numSigs < ms.minSigners) {
+    throw new Error('Unable to get required signatures');
+  }
+
+  const txFinal = btc.Transaction.fromPSBT(hex.decode(psbtHex));
+  txFinal.finalize();
+
+  const txHex = txFinal.toBytes(true, false);
+  if (isNotNullish(maxSize) && txHex.length > maxSize) {
+    logger.error(
+      {
+        topic: 'btcTxSize',
+        maxSize: maxSize,
+        txSize: txHex.length,
+      },
+      `Unable to send BTC - tx of size ${txHex.length} bytes is over ${maxSize} bytes`
+    );
+    throw new Error(
+      `Unable to send BTC - tx of size ${txHex.length} bytes is over ${maxSize} bytes`
+    );
+  }
+
+  const txid = await tryBroadcastScure(client, txFinal);
+  if (txid) {
+    logger.debug({ txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
+  }
+  return txFinal.id;
 }

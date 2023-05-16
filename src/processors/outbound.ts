@@ -75,14 +75,14 @@ export async function sendOutbound(event: InitiateOutboundPrint) {
     `Sending ${amount} sats to ${address}`
   );
   const txid = await withElectrumClient(async client => {
-    const tx = await sendBtc({
+    return sendBtc({
       client,
-      recipient: address,
+      recipient: event.output,
+      swapId,
       amount,
       maxSize: 1024,
     });
-    const txid = tx.getId();
-    return txid;
+    // return txid;
   });
 
   return txid;
