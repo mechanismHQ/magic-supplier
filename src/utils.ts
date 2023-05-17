@@ -26,6 +26,10 @@ export function getCompressedKey(key: string) {
   return { key, isCompressed: false };
 }
 
+export function toBigInt(n: number) {
+  return BigInt(Math.ceil(n));
+}
+
 export function makeStxAddress(privateKey: string, networkVersion: StacksNetworkVersion): string {
   const { key, isCompressed } = getCompressedKey(privateKey);
   return privateKeyToStxAddress(key, networkVersion, isCompressed);

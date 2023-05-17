@@ -248,11 +248,17 @@ export class ServerConfig {
     return payments.p2pkh({ pubkey: Buffer.from(this.publicKey), network: this.btcNetwork });
   }
 
+  get wpkhPayment() {
+    return btc.p2wpkh(hex.decode(this.btcSignerKey), this.btcNetwork);
+  }
+
   get btcMainOutput() {
     if (this.hasMultisig()) {
       return this.p2ms.script;
     }
-    return btc.p2pkh(hex.decode(this.btcSignerKey)).script;
+    return this.wpkhPayment.script;
+    // return btc.p2wpkh(hex.decode(this.btcSignerKey)).script;
+    // return btc.p2pkh(hex.decode(this.btcSignerKey)).script;
   }
 
   get btcAddress() {

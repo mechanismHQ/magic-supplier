@@ -1,5 +1,5 @@
 import ElectrumClient, { Unspent } from 'electrum-client-sl';
-import { btcToSats, getBtcTxUrl, getScriptHash, isNotNullish, shiftInt } from '../utils';
+import { btcToSats, getBtcTxUrl, getScriptHash, isNotNullish, shiftInt, toBigInt } from '../utils';
 import {
   getBtcPayment,
   getBtcNetwork,
@@ -10,13 +10,12 @@ import {
   getSupplierId,
   c,
 } from '../config';
-import { Psbt, Transaction } from 'bitcoinjs-lib';
 import { logger } from '../logger';
 import { fetchAccountBalances } from 'micro-stacks/api';
 import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
 import BigNumber from 'bignumber.js';
 import { hexToBytes } from 'micro-stacks/common';
-import { OutScript } from '@scure/btc-signer';
+import { OutScript, Transaction } from '@scure/btc-signer';
 import { hex } from '@scure/base';
 
 export const electrumClient = () => {
@@ -84,8 +83,8 @@ function getSizeOfVarInt(length: number) {
   }
 }
 
-export function getTxOverheadVBytes(isMultiSig: boolean, inputs: number, outputs: number) {
-  const witnessBytes = isMultiSig ? 0.5 + inputs / 4 : 0;
+export function getTxOverheadVBytes(isWitness: boolean, inputs: number, outputs: number) {
+  const witnessBytes = isWitness ? 0.5 + inputs / 4 : 0;
 
   return (
     4 + // nVersion
@@ -108,9 +107,45 @@ export function pkhTxWeight(inputs: number, output: Uint8Array) {
   return txVBytes;
 }
 
+export function wpkhTxWeight(inputs: number, output: Uint8Array) {
+  const inputSize = 67.75;
+  const outputSize = outputWeight(output);
+  const txVBytes =
+    getTxOverheadVBytes(true, inputs, 2) + //overhead
+    inputSize * inputs + //inputs
+    outputSize + // output
+    34; // change
+
+  return txVBytes;
+}
+
 export function pkhCoinSelectWeightFn(output: Uint8Array) {
   return (inputs: number) => {
     const w = pkhTxWeight(inputs, output);
-    return BigInt(w.toFixed(0));
+    return toBigInt(w);
   };
+}
+
+export function wpkhCoinSelectWeightFn(output: Uint8Array) {
+  return (inputs: number) => {
+    const w = wpkhTxWeight(inputs, output);
+    return toBigInt(w);
+  };
+}
+
+export function validateMaxSize(tx: Transaction, maxSize?: number) {
+  const txHex = tx.toBytes(true, false);
+  if (isNotNullish(maxSize) && txHex.length > maxSize) {
+    logger.error(
+      {
+        topic: 'btcTxSize',
+        maxSize: maxSize,
+        txSize: txHex.length,
+      },
+      `Unable to send BTC - tx of size ${txHex.length} bytes is over ${maxSize} bytes`
+    );
+    throw new Error(
+      `Unable to send BTC - tx of size ${txHex.length} bytes is over ${maxSize} bytes`
+    );
+  }
 }

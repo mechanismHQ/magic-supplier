@@ -4,6 +4,7 @@ import {
   AddressNonces,
   MempoolTransaction,
   Transaction,
+  TransactionEventSmartContractLog,
 } from '@stacks/stacks-blockchain-api-types';
 import { getStxNetwork } from './config';
 import {
@@ -21,6 +22,8 @@ import { logger } from './logger';
 import { getTxUrl, isNotNullish } from './utils';
 import { bridgeContract } from './stacks';
 import { Event, getPrintFromRawEvent } from './events';
+import { cvToJSON } from '@clarigen/core';
+import { hexToCV } from 'micro-stacks/clarity';
 
 export async function getStacksBlock(
   hash: string
@@ -178,12 +181,17 @@ export async function getContractEventsUntil(
     }
     const event = getPrintFromRawEvent(apiEvent);
     if (event === null) continue;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const eventJson = cvToJSON(
+      hexToCV((apiEvent as TransactionEventSmartContractLog).contract_log.value.hex)
+    );
     logger.info(
       {
         topic: 'contractEvent',
         txUrl: getTxUrl(apiEvent.tx_id),
         txid: apiEvent.tx_id,
-        event: event.print,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        event: eventJson,
       },
       `New bridge tx: ${event.print.topic}`
     );

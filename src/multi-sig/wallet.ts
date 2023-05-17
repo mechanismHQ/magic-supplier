@@ -1,6 +1,7 @@
 import { c } from '../config';
 import * as btc from '@scure/btc-signer';
-import { getTxOverheadVBytes, outputWeight, selectCoins, tryBroadcastScure } from '../wallet';
+import { selectCoins, tryBroadcastScure } from '../wallet';
+import { validateMaxSize, getTxOverheadVBytes, outputWeight } from '../wallet/utils';
 import ElectrumClient, { Unspent } from 'electrum-client-sl';
 import { hex } from '@scure/base';
 import { logger } from '../logger';
@@ -176,20 +177,7 @@ export async function sendBtcMultiSig({
   const txFinal = btc.Transaction.fromPSBT(hex.decode(psbtHex));
   txFinal.finalize();
 
-  const txHex = txFinal.toBytes(true, false);
-  if (isNotNullish(maxSize) && txHex.length > maxSize) {
-    logger.error(
-      {
-        topic: 'btcTxSize',
-        maxSize: maxSize,
-        txSize: txHex.length,
-      },
-      `Unable to send BTC - tx of size ${txHex.length} bytes is over ${maxSize} bytes`
-    );
-    throw new Error(
-      `Unable to send BTC - tx of size ${txHex.length} bytes is over ${maxSize} bytes`
-    );
-  }
+  validateMaxSize(txFinal, maxSize);
 
   const txid = await tryBroadcastScure(client, txFinal);
   if (txid) {

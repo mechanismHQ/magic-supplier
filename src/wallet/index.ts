@@ -17,7 +17,14 @@ import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
 import BigNumber from 'bignumber.js';
 import { hexToBytes } from 'micro-stacks/common';
 export * from './utils';
-import { electrumClient, withElectrumClient, listUnspent, pkhCoinSelectWeightFn } from './utils';
+import {
+  electrumClient,
+  withElectrumClient,
+  listUnspent,
+  pkhCoinSelectWeightFn,
+  wpkhCoinSelectWeightFn,
+  validateMaxSize,
+} from './utils';
 import { Address, OutScript, Transaction as ScureTransaction } from '@scure/btc-signer';
 import { sendBtcMultiSig } from '../multi-sig/wallet';
 import { hex } from '@scure/base';
@@ -86,9 +93,57 @@ export async function sendBtc(opts: SendBtc) {
   if (config.hasMultisig()) {
     txid = await sendBtcMultiSig(opts);
   } else {
-    txid = await sendBtcSingleSig(opts);
+    // txid = await sendBtcSingleSig(opts);
+    txid = await sendBtcSegwitSingleSig(opts);
   }
   return txid;
+}
+
+export async function sendBtcSegwitSingleSig(opts: SendBtc) {
+  const { client, amount, ...logOpts } = opts;
+  const config = c();
+  // const recipient = Address(config.scureBtcNetwork).encode(OutScript.decode(opts.recipient));
+  const weightFn = wpkhCoinSelectWeightFn(opts.recipient);
+  const { coins, fee, total } = await selectCoins(opts.amount, client, weightFn);
+  const senderPayment = config.wpkhPayment;
+
+  const tx = new ScureTransaction();
+
+  coins.forEach(coin => {
+    tx.addInput({
+      txid: coin.tx_hash,
+      index: coin.tx_pos,
+      witnessScript: senderPayment.witnessScript!,
+      witnessUtxo: {
+        script: senderPayment.script,
+        amount: BigInt(coin.value),
+      },
+    });
+  });
+
+  const change = total - amount - fee;
+
+  tx.addOutput({
+    script: opts.recipient,
+    amount,
+  });
+
+  tx.addOutput({
+    script: senderPayment.script,
+    amount: change,
+  });
+
+  tx.sign(config.btcPrivateKey);
+
+  tx.finalize();
+
+  validateMaxSize(tx, opts.maxSize);
+
+  const txid = await tryBroadcastScure(client, tx);
+  if (txid) {
+    logger.debug({ ...logOpts, txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
+  }
+  return tx.id;
 }
 
 export async function sendBtcSingleSig(opts: SendBtc) {
