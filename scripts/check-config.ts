@@ -17,7 +17,11 @@ async function run() {
     if (config.hasSupplierId()) {
       const configKeys = config.validateConfig();
       config.logConfig(configKeys);
-      await config.validateKeysMatch();
+      try {
+        await config.validateKeysMatch();
+      } catch (error) {
+        console.error(error);
+      }
     } else {
       const configKeys = config.validateKeys();
       config.logConfig(configKeys);

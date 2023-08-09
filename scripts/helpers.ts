@@ -11,16 +11,20 @@ import {
 import { stacksProvider } from '../src/stacks';
 import { getTxUrl, stxToUstx, ustxToStx } from '../src/utils';
 import { getStxBalance } from '../src/wallet';
-import { getStxNetwork, getStxPrivateKey } from '../src/config';
+import { getStxAddress, getStxNetwork, getStxPrivateKey } from '../src/config';
 import { bytesToHex, hexToBytes, IntegerType } from 'micro-stacks/common';
 import { Prints, Event } from '../src/events';
+import { fetchAccountNonce } from '../src/stacks-api';
 
 type UnknownTx = ContractCallTyped<TypedAbiArg<unknown, string>[], unknown>;
 
 export async function broadcastAndLog(tx: UnknownTx, options: Partial<ContractCallOptions>) {
   const network = getStxNetwork();
   const fee = await askFeeOrDefault(tx, options);
+  const address = getStxAddress();
+  const nonce = await fetchAccountNonce(address);
   const _tx = await makeContractCall({
+    nonce,
     ...tx,
     ...options,
     fee,

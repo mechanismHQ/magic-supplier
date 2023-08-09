@@ -17,7 +17,7 @@ async function run() {
   const bridge = bridgeContract();
 
   const supplierId = getSupplierId();
-  const supplier = await provider.ro(bridge.getSupplier(supplierId));
+  const supplier = await provider.ro(bridge.getSupplier(supplierId), { tip: 'latest' });
 
   if (supplier === null) {
     throw new Error(`Supplier ID (${supplierId}) invalid`);

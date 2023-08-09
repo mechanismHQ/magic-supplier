@@ -41,7 +41,8 @@ function getLokiTransport(): TransportTargetOptions | null {
 }
 
 export let logger: pino.Logger;
-if (process.env.NODE_ENV === 'development') {
+const nodeEnv = process.env.NODE_ENV;
+if (nodeEnv === 'development' || nodeEnv === 'testnet') {
   logger = pino({
     transport: {
       target: 'pino-pretty',
@@ -51,7 +52,7 @@ if (process.env.NODE_ENV === 'development') {
     },
     level: 'debug',
   });
-} else if (process.env.NODE_ENV === 'test') {
+} else if (nodeEnv === 'test') {
   logger = pino({
     level: 'silent',
   });

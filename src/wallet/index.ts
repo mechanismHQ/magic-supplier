@@ -215,7 +215,7 @@ export async function getXbtcFunds() {
   const provider = stacksProvider();
   try {
     const supplierId = getSupplierId();
-    const funds = await provider.ro(bridge.getFunds(supplierId));
+    const funds = await provider.ro(bridge.getFunds(supplierId), { tip: 'latest' });
     return {
       xbtc: shiftInt(funds, -8).toNumber(),
     };
