@@ -1,4 +1,3 @@
-import { ECPair, networks, payments } from 'bitcoinjs-lib';
 import { StacksNetworkVersion } from 'micro-stacks/crypto';
 import { StacksMainnet, StacksMocknet, StacksNetwork, StacksTestnet } from 'micro-stacks/network';
 import { logger } from './logger';
@@ -10,6 +9,7 @@ import { hex } from '@scure/base';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { equalBytes } from 'micro-packed';
 import { hexToBytes } from '@noble/curves/abstract/utils';
+import { BitcoinNetwork } from 'magic-protocol';
 
 // const minSignersSchema = z.number();
 // const msPublicKeysSchema = z.array(z.string());
@@ -160,7 +160,7 @@ export class ServerConfig {
 
   get p2ms() {
     const { msPublicKeys, minSigners } = this.multisigConfig;
-    return btc.p2wsh(btc.p2ms(minSigners, msPublicKeys.map(hex.decode)), this.scureBtcNetwork);
+    return btc.p2wsh(btc.p2ms(minSigners, msPublicKeys.map(hex.decode)), this.btcNetwork);
   }
 
   hasMultisig() {
@@ -188,33 +188,19 @@ export class ServerConfig {
   }
 
   get btcNetwork() {
-    switch (this.networkKey) {
-      case 'mocknet':
-        return networks.testnet;
-      case 'mainnet':
-        return networks.bitcoin;
-      case 'testnet':
-        return networks.testnet;
-      default:
-        throw new Error(`Invalid SUPPLIER_NETWORK: ${this.networkKey}`);
-    }
-  }
-
-  get scureBtcNetwork() {
-    if (this.networkKey === 'mainnet') return btc.NETWORK;
+    if (this.networkKey === 'mainnet') return BitcoinNetwork.Mainnet;
     if (this.networkKey === 'mocknet') {
-      return {
-        ...btc.TEST_NETWORK,
-        bech32: 'bcrt',
-      };
+      return BitcoinNetwork.Regtest;
     }
-    return btc.TEST_NETWORK;
+    return BitcoinNetwork.Testnet;
   }
 
   get stxNetwork() {
     switch (this.networkKey) {
       case 'mocknet':
-        return new StacksMocknet();
+        return new StacksMocknet({
+          url: 'http://127.0.0.1:3999',
+        });
       case 'mainnet':
         return new StacksMainnet();
       case 'testnet':
@@ -224,19 +210,12 @@ export class ServerConfig {
     }
   }
 
-  get btcSigner() {
-    return ECPair.fromWIF(this.btcSignerKey, this.btcNetwork);
-  }
-
   get btcPrivateKey() {
-    return btc.WIF(this.scureBtcNetwork).decode(this.btcSignerKey);
-    // const signer = this.btcSigner;
-    // if (!signer.privateKey) throw new Error('Invalid private key in SUPPLIER_BTC_KEY');
-    // return signer.privateKey;
+    return btc.WIF(this.btcNetwork).decode(this.btcSignerKey);
   }
 
   get publicKey() {
-    const priv = btc.WIF(this.scureBtcNetwork).decode(this.btcSignerKey);
+    const priv = btc.WIF(this.btcNetwork).decode(this.btcSignerKey);
     return secp256k1.getPublicKey(priv);
   }
 
@@ -245,20 +224,19 @@ export class ServerConfig {
   }
 
   get btcPayment() {
-    return payments.p2pkh({ pubkey: Buffer.from(this.publicKey), network: this.btcNetwork });
+    if (this.hasMultisig()) {
+      return this.p2ms;
+    }
+    return this.wpkhPayment;
+    // return payments.p2pkh({ pubkey: Buffer.from(this.publicKey), network: this.btcNetwork });
   }
 
   get wpkhPayment() {
-    return btc.p2wpkh(hex.decode(this.btcSignerKey), this.btcNetwork);
+    return btc.p2wpkh(this.publicKey, this.btcNetwork);
   }
 
   get btcMainOutput() {
-    if (this.hasMultisig()) {
-      return this.p2ms.script;
-    }
-    return this.wpkhPayment.script;
-    // return btc.p2wpkh(hex.decode(this.btcSignerKey)).script;
-    // return btc.p2pkh(hex.decode(this.btcSignerKey)).script;
+    return this.btcPayment.script;
   }
 
   get btcAddress() {
@@ -323,6 +301,7 @@ export class ServerConfig {
       btcAddress: this.btcMainWallet,
       stxAddress: this.stxAddress,
       btcNetwork: this.networkKey,
+      isMultisig: this.hasMultisig(),
     };
   }
 
@@ -382,11 +361,7 @@ export class ServerConfig {
       throw new Error(`STX key invalid: expected ${supplier.controller} to equal ${stxAddress}`);
     }
 
-    const supplierBtc = btc.p2pkh(supplier.publicKey, this.scureBtcNetwork).address!;
-    // const supplierBtc = payments.p2pkh({
-    //   pubkey: Buffer.from(supplier.publicKey),
-    //   network: this.btcNetwork,
-    // }).address!;
+    const supplierBtc = btc.p2wpkh(supplier.publicKey, this.btcNetwork).address!;
     if (supplierBtc !== btcAddress) {
       throw new Error(`BTC key invalid: expected ${supplierBtc} to equal ${btcAddress}`);
     }
@@ -397,10 +372,6 @@ export class ServerConfig {
 
 export function getEnv(key: string) {
   return ServerConfig.getEnv(key);
-}
-
-export function getBtcSigner() {
-  return c().btcSigner;
 }
 
 export function getBtcPrivateKey() {
@@ -452,10 +423,6 @@ export type PublicConfig = ReturnType<typeof validateConfig>;
 
 export function logConfig(config: Record<string, string | number>) {
   return c().logConfig(config);
-}
-
-export function getBtcNetwork(): networks.Network {
-  return c().btcNetwork;
 }
 
 export function getStxNetwork(): StacksNetwork {

@@ -1,7 +1,5 @@
-import { networks, payments, address as bAddress } from 'bitcoinjs-lib';
 import { Address, OutScript } from '@scure/btc-signer';
-import { bytesToBigInt } from 'micro-stacks/common';
-import { getBtcNetwork, getSupplierId } from '../config';
+import { getSupplierId } from '../config';
 import {
   getSentOutbound,
   setSentOutbound,

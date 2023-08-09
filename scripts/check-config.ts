@@ -29,6 +29,7 @@ async function run() {
         bridge: contracts.magic.identifier,
         xbtc: contracts.wrappedBitcoin.identifier,
         network: config.networkKey,
+        multisig: config.hasMultisig(),
       },
       'Configured contracts:'
     );

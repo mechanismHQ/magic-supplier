@@ -1,76 +1,77 @@
-import { getFeeRate, listUnspent, txWeight, withElectrumClient } from '../src/wallet';
-import { Psbt } from 'bitcoinjs-lib';
-import { getBtcPayment, getBtcNetwork, getBtcSigner } from '../src/config';
-import { getBtcTxUrl, satsToBtc } from '../src/utils';
-import { prompt } from 'inquirer';
+// TODO: refactor for multi-sig
 
-async function run() {
-  const network = getBtcNetwork();
-  const { address } = getBtcPayment();
-  const signer = getBtcSigner();
-  if (!address) throw new Error('Invalid BTC wallet configuration');
-  const psbt = new Psbt({ network });
-  await withElectrumClient(async client => {
-    const [unspents, feeRate] = await Promise.all([listUnspent(client), getFeeRate(client)]);
-    const size = txWeight(unspents.length, 1);
-    const fee = size * BigInt(feeRate);
+// import { getFeeRate, listUnspent, txWeight, withElectrumClient } from '../src/wallet';
+// import { getBtcPayment, getBtcNetwork, getBtcSigner } from '../src/config';
+// import { getBtcTxUrl, satsToBtc } from '../src/utils';
+// import { prompt } from 'inquirer';
 
-    if (unspents.length < 2) {
-      console.log(`Not consolidating - only ${unspents.length} input`);
-      return;
-    }
+// async function run() {
+//   const network = getBtcNetwork();
+//   const { address } = getBtcPayment();
+//   const signer = getBtcSigner();
+//   if (!address) throw new Error('Invalid BTC wallet configuration');
+//   const psbt = new Psbt({ network });
+//   await withElectrumClient(async client => {
+//     const [unspents, feeRate] = await Promise.all([listUnspent(client), getFeeRate(client)]);
+//     const size = txWeight(unspents.length, 1);
+//     const fee = size * BigInt(feeRate);
 
-    let total = 0n;
-    psbt.addInputs(
-      await Promise.all(
-        unspents.map(async coin => {
-          const txHex = await client.blockchain_transaction_get(coin.tx_hash);
-          total += BigInt(coin.value);
-          return {
-            hash: coin.tx_hash,
-            index: coin.tx_pos,
-            nonWitnessUtxo: Buffer.from(txHex, 'hex'),
-          };
-        })
-      )
-    );
+//     if (unspents.length < 2) {
+//       console.log(`Not consolidating - only ${unspents.length} input`);
+//       return;
+//     }
 
-    const outAmount = total - fee;
+//     let total = 0n;
+//     psbt.addInputs(
+//       await Promise.all(
+//         unspents.map(async coin => {
+//           const txHex = await client.blockchain_transaction_get(coin.tx_hash);
+//           total += BigInt(coin.value);
+//           return {
+//             hash: coin.tx_hash,
+//             index: coin.tx_pos,
+//             nonWitnessUtxo: Buffer.from(txHex, 'hex'),
+//           };
+//         })
+//       )
+//     );
 
-    psbt.addOutput({
-      address,
-      value: Number(outAmount),
-    });
+//     const outAmount = total - fee;
 
-    await psbt.signAllInputsAsync(signer);
-    psbt.finalizeAllInputs();
+//     psbt.addOutput({
+//       address,
+//       value: Number(outAmount),
+//     });
 
-    const tx = psbt.extractTransaction();
+//     await psbt.signAllInputsAsync(signer);
+//     psbt.finalizeAllInputs();
 
-    console.log(`Total BTC: ${satsToBtc(total)}`);
-    console.log(`Fee (BTC): ${satsToBtc(fee)}`);
-    console.log(`Fee rate: ${feeRate}`);
-    console.log(`Inputs: ${unspents.length}`);
+//     const tx = psbt.extractTransaction();
 
-    const { confirm } = await prompt<{ confirm: boolean }>([
-      {
-        type: 'confirm',
-        name: 'confirm',
-        message: 'Send transaction?',
-      },
-    ]);
+//     console.log(`Total BTC: ${satsToBtc(total)}`);
+//     console.log(`Fee (BTC): ${satsToBtc(fee)}`);
+//     console.log(`Fee rate: ${feeRate}`);
+//     console.log(`Inputs: ${unspents.length}`);
 
-    if (confirm) {
-      const txid = await client.blockchain_transaction_broadcast(tx.toHex());
-      console.log('Broadcasted!');
-      console.log(getBtcTxUrl(txid));
-      // console.log('Raw:', tx.toHex());
-    }
-  });
-}
+//     const { confirm } = await prompt<{ confirm: boolean }>([
+//       {
+//         type: 'confirm',
+//         name: 'confirm',
+//         message: 'Send transaction?',
+//       },
+//     ]);
 
-run()
-  .catch(console.error)
-  .finally(() => {
-    process.exit();
-  });
+//     if (confirm) {
+//       const txid = await client.blockchain_transaction_broadcast(tx.toHex());
+//       console.log('Broadcasted!');
+//       console.log(getBtcTxUrl(txid));
+//       // console.log('Raw:', tx.toHex());
+//     }
+//   });
+// }
+
+// run()
+//   .catch(console.error)
+//   .finally(() => {
+//     process.exit();
+//   });

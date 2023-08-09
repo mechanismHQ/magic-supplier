@@ -1,14 +1,7 @@
-import { c, getBtcAddress, getBtcNetwork, getBtcSigner, getSupplierId } from '../config';
-import { Psbt, script as bScript, payments, opcodes } from 'bitcoinjs-lib';
+import { c, getSupplierId } from '../config';
 import { getRedeemedHTLC, setRedeemedHTLC, RedisClient } from '../store';
 import { logger as _logger } from '../logger';
-import {
-  getFeeRate,
-  outputWeight,
-  tryBroadcast,
-  tryBroadcastScure,
-  withElectrumClient,
-} from '../wallet';
+import { getFeeRate, outputWeight, tryBroadcast, withElectrumClient } from '../wallet';
 import { bridgeContract, stacksProvider } from '../stacks';
 import { bytesToHex, hexToBytes } from 'micro-stacks/common';
 import { getBtcTxUrl, satsToBtc, toBigInt } from '../utils';
@@ -45,7 +38,7 @@ export async function processFinalizedInbound(event: Event, client: RedisClient)
       l.error('Error redeeming: no preimage');
       return { error: 'No preimage' };
     }
-    const redeemTxid = await redeemSegwithHtlc(txidHex, preimage);
+    const redeemTxid = await redeem(txidHex, preimage);
     await setRedeemedHTLC(client, txidHex, redeemTxid);
     return {
       redeemTxid,
@@ -65,67 +58,6 @@ export async function processFinalizedInbound(event: Event, client: RedisClient)
  *
  */
 export async function redeem(txid: string, preimage: Uint8Array) {
-  return withElectrumClient(async client => {
-    const tx = await client.blockchain_transaction_get(txid, true);
-    const txHex = Buffer.from(tx.hex, 'hex');
-    const bridge = bridgeContract();
-    const config = c();
-    const provider = stacksProvider();
-    const swap = await provider.roOk(bridge.getFullInbound(hexToBytes(txid)));
-    const network = config.btcNetwork;
-
-    const psbt = new Psbt({ network });
-    const signer = config.btcSigner;
-    const weight = 351;
-    const feeRate = await getFeeRate(client);
-    const fee = weight * feeRate;
-
-    psbt.addInput({
-      hash: txid,
-      index: Number(swap.outputIndex),
-      nonWitnessUtxo: txHex,
-      redeemScript: Buffer.from(swap.redeemScript),
-    });
-
-    psbt.addOutput({
-      script: Buffer.from(config.btcMainOutput),
-      value: Number(swap.sats) - fee,
-    });
-    await psbt.signInputAsync(0, signer);
-
-    psbt.finalizeInput(0, (index, input, script) => {
-      const partialSigs = input.partialSig;
-      if (!partialSigs) throw new Error('Error when finalizing HTLC input');
-      const inputScript = bScript.compile([
-        partialSigs[0].signature,
-        Buffer.from(preimage),
-        opcodes.OP_TRUE,
-      ]);
-      const payment = payments.p2sh({
-        redeem: {
-          output: script,
-          input: inputScript,
-        },
-      });
-      return {
-        finalScriptSig: payment.input,
-        finalScriptWitness: undefined,
-      };
-    });
-
-    const final = psbt.extractTransaction();
-    const finalId = final.getId();
-    await tryBroadcast(client, final);
-    const btcAmount = satsToBtc(swap.sats);
-    logger.info(
-      { redeemTxid: finalId, txUrl: getBtcTxUrl(finalId), htlcTxid: txid, amount: swap.sats },
-      `Redeemed inbound HTLC for ${btcAmount} BTC`
-    );
-    return finalId;
-  });
-}
-
-export async function redeemSegwithHtlc(txid: string, preimage: Uint8Array) {
   return withElectrumClient(async client => {
     const bridge = bridgeContract();
     const config = c();
@@ -168,7 +100,7 @@ export async function redeemSegwithHtlc(txid: string, preimage: Uint8Array) {
     // console.log(`btcdeb --tx=${tx.hex} --txin=${lastTx.hex}`);
 
     const finalId = tx.id;
-    await tryBroadcastScure(client, tx);
+    await tryBroadcast(client, tx);
     const btcAmount = satsToBtc(swap.sats);
     logger.info(
       { redeemTxid: finalId, txUrl: getBtcTxUrl(finalId), htlcTxid: txid, amount: swap.sats },

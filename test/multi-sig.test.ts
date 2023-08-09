@@ -3,12 +3,15 @@ import { hex } from '@scure/base';
 import * as btc from '@scure/btc-signer';
 import { describe, expect, test, vi } from 'vitest';
 import { api } from '../src/index';
+import { BitcoinNetwork } from 'magic-protocol';
 
 export const PRIVATE_KEYS = [
   '4c21c96c3c541da9c483dc5afd184d96961f86ff2e28707ec50591ac2e9b4e1f',
   'cb16df43098c19169068d907952bc194c9418b48c600d4e3ef1a48ce8ce78d0c',
   'a3f1d701f5682537fa3181ee27dcc880ea85d455f67786f045bc93e1a6fdbec1',
 ].map(hex.decode);
+
+const WIFS = PRIVATE_KEYS.map(k => btc.WIF(BitcoinNetwork.Testnet).encode(k));
 
 export const PUBLIC_KEYS = PRIVATE_KEYS.map(key => {
   return secp256k1.getPublicKey(key);
@@ -26,7 +29,7 @@ test('basic multi-sig route', async () => {
       mode: 'follower',
     },
     stxSignerKey: hex.encode(PRIVATE_KEYS[0]),
-    btcSignerKey: hex.encode(PRIVATE_KEYS[0]),
+    btcSignerKey: WIFS[0],
     supplierId: 0,
     networkKey: 'mocknet',
   });
@@ -99,7 +102,7 @@ test('basic multi-sig route', async () => {
       minSigners,
       mode: 'follower',
     },
-    btcSignerKey: hex.encode(PRIVATE_KEYS[1]),
+    btcSignerKey: WIFS[1],
     supplierId: 0,
     networkKey: 'mocknet',
     stxSignerKey: hex.encode(PRIVATE_KEYS[1]),

@@ -189,13 +189,23 @@ export async function finalizeOutbound({
         0n,
         id
       );
+      const network = getStxNetwork();
       const stxTx = await makeContractCall({
         ...finalizeTx,
         senderKey: getStxPrivateKey(),
         anchorMode: AnchorMode.Any,
+        network,
         nonce,
       });
-      const receipt = await broadcastTransaction(stxTx, getStxNetwork());
+      const receipt = await broadcastTransaction(stxTx, network);
+      if ('error' in receipt) {
+        let msg = `Failed to broadcast finalize outbound Stacks tx: ${receipt.error}`;
+        if ('reason' in receipt) {
+          msg += `: ${receipt.reason}`;
+        }
+        throw new Error(msg);
+      }
+      // console.log('receipt', receipt);
       return receipt.txid;
     });
     log.debug({ stxTxid }, `Submitted finalize outbound Stacks tx: ${stxTxid}`);

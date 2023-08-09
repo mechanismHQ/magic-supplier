@@ -1,7 +1,6 @@
 import { test, expect, describe, beforeEach } from 'vitest';
 import { ServerConfig, ConfigInit, MultiSigSchema, ConfigEnv, multiSigSchema } from '../src/config';
 import { hex } from '@scure/base';
-import { payments } from 'bitcoinjs-lib';
 import { WIF, TEST_NETWORK } from '@scure/btc-signer';
 import { secp256k1 } from '@noble/curves/secp256k1';
 
@@ -109,7 +108,8 @@ describe('config', () => {
     });
 
     const configPk = config.publicKey;
-    const fromBitcoinJs = Uint8Array.from(config.btcSigner.publicKey);
-    expect(hex.encode(configPk)).toEqual(hex.encode(fromBitcoinJs));
+    expect(hex.encode(configPk)).toEqual(
+      '03bcf691de891ce989c00a907f4ba1145e75adaada1eb1cc6a6edc1f8e7afd4ebe'
+    );
   });
 });

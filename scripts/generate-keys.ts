@@ -1,9 +1,8 @@
 import { secp256k1 } from '@noble/curves/secp256k1';
-import { ECPair, payments } from 'bitcoinjs-lib';
-import { getBtcNetwork, getStxNetworkVersion } from '../src/config';
+import { ServerConfig } from '../src/config';
 import { bytesToHex } from 'micro-stacks/common';
-import { makeStxAddress } from '../src/utils';
 import { prompt } from 'inquirer';
+import { WIF } from '@scure/btc-signer';
 
 interface Answers {
   networkKey: string;
@@ -20,18 +19,21 @@ async function run() {
   ]);
   process.env.SUPPLIER_NETWORK = answers.networkKey;
   const stxKey = secp256k1.utils.randomPrivateKey();
-  const stxNetwork = getStxNetworkVersion();
 
   const btcKey = secp256k1.utils.randomPrivateKey();
-  const btcNetwork = getBtcNetwork();
-  const btcSigner = ECPair.fromPrivateKey(Buffer.from(btcKey), { network: btcNetwork });
-  const btcWIF = btcSigner.toWIF();
 
-  const btcPayment = payments.p2pkh({ pubkey: btcSigner.publicKey, network: btcNetwork });
+  const config = ServerConfig.load({
+    stxSignerKey: bytesToHex(stxKey),
+    networkKey: answers.networkKey,
+    btcSignerKey: '',
+  });
+  const btcNetwork = config.btcNetwork;
+  const btcWIF = WIF(btcNetwork).encode(btcKey);
+  config.btcSignerKey = btcWIF;
 
   console.log('Your addresses:');
-  console.log('BTC Address:', btcPayment.address);
-  console.log('STX Address:', makeStxAddress(bytesToHex(stxKey), stxNetwork));
+  console.log('BTC Address:', config.btcAddress);
+  console.log('STX Address:', config.stxAddress);
   console.log('');
 
   console.log('Add to your .env file:');

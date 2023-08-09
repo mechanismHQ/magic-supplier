@@ -1,6 +1,6 @@
 import 'cross-fetch/polyfill';
 import { hexToBytes } from 'micro-stacks/common';
-import { redeemSegwithHtlc } from '../src/processors/redeem-htlc';
+import { redeem } from '../src/processors/redeem-htlc';
 import { bridgeContract, stacksProvider } from '../src/stacks';
 import { getBtcTxUrl } from '../src/utils';
 
@@ -14,7 +14,7 @@ async function run() {
   if (preimage === null) {
     throw new Error('Invalid swap - not finalized');
   }
-  const redeemTxid = await redeemSegwithHtlc(txidHex, preimage);
+  const redeemTxid = await redeem(txidHex, preimage);
   console.log(getBtcTxUrl(redeemTxid));
 }
 

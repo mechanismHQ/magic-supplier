@@ -1,20 +1,7 @@
-import ElectrumClient, { Unspent } from 'electrum-client-sl';
-import { btcToSats, getBtcTxUrl, getScriptHash, isNotNullish, shiftInt, toBigInt } from '../utils';
-import {
-  getBtcPayment,
-  getBtcNetwork,
-  getBtcSigner,
-  getElectrumConfig,
-  getStxNetwork,
-  getStxAddress,
-  getSupplierId,
-  c,
-} from '../config';
+import ElectrumClient from 'electrum-client-sl';
+import { getScriptHash, isNotNullish, shiftInt, toBigInt } from '../utils';
+import { getElectrumConfig, c } from '../config';
 import { logger } from '../logger';
-import { fetchAccountBalances } from 'micro-stacks/api';
-import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
-import BigNumber from 'bignumber.js';
-import { hexToBytes } from 'micro-stacks/common';
 import { OutScript, Transaction } from '@scure/btc-signer';
 import { hex } from '@scure/base';
 

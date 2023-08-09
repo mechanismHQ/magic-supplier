@@ -1,6 +1,6 @@
 import { c } from '../config';
 import * as btc from '@scure/btc-signer';
-import { selectCoins, tryBroadcastScure } from '../wallet';
+import { selectCoins, tryBroadcast } from '../wallet';
 import { validateMaxSize, getTxOverheadVBytes, outputWeight } from '../wallet/utils';
 import ElectrumClient, { Unspent } from 'electrum-client-sl';
 import { hex } from '@scure/base';
@@ -179,7 +179,7 @@ export async function sendBtcMultiSig({
 
   validateMaxSize(txFinal, maxSize);
 
-  const txid = await tryBroadcastScure(client, txFinal);
+  const txid = await tryBroadcast(client, txFinal);
   if (txid) {
     logger.debug({ txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
   }

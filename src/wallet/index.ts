@@ -1,16 +1,6 @@
 import ElectrumClient, { Unspent } from 'electrum-client-sl';
 import { btcToSats, getBtcTxUrl, getScriptHash, isNotNullish, shiftInt } from '../utils';
-import {
-  getBtcPayment,
-  getBtcNetwork,
-  getBtcSigner,
-  getElectrumConfig,
-  getStxNetwork,
-  getStxAddress,
-  getSupplierId,
-  c,
-} from '../config';
-import { Psbt, Transaction } from 'bitcoinjs-lib';
+import { getStxNetwork, getStxAddress, getSupplierId, c } from '../config';
 import { logger } from '../logger';
 import { fetchAccountBalances } from 'micro-stacks/api';
 import { bridgeContract, stacksProvider, xbtcAssetId } from '../stacks';
@@ -25,18 +15,9 @@ import {
   wpkhCoinSelectWeightFn,
   validateMaxSize,
 } from './utils';
-import { Address, OutScript, Transaction as ScureTransaction } from '@scure/btc-signer';
+import { Address, OutScript, Transaction } from '@scure/btc-signer';
 import { sendBtcMultiSig } from '../multi-sig/wallet';
 import { hex } from '@scure/base';
-
-// Get the vB size of a BTC transaction.
-// Calculations assume p2pkh inputs
-// export function txWeight(inputs: number) {
-//   const overhead = 10n;
-//   const outputSize = 34n * BigInt(outputs);
-//   const inputSize = 148n * BigInt(inputs);
-//   return overhead + outputSize + inputSize;
-// }
 
 export type TxWeightFunction = (inputs: number) => bigint;
 
@@ -94,12 +75,12 @@ export async function sendBtc(opts: SendBtc) {
     txid = await sendBtcMultiSig(opts);
   } else {
     // txid = await sendBtcSingleSig(opts);
-    txid = await sendBtcSegwitSingleSig(opts);
+    txid = await sendBtcSingleSig(opts);
   }
   return txid;
 }
 
-export async function sendBtcSegwitSingleSig(opts: SendBtc) {
+export async function sendBtcSingleSig(opts: SendBtc) {
   const { client, amount, ...logOpts } = opts;
   const config = c();
   // const recipient = Address(config.scureBtcNetwork).encode(OutScript.decode(opts.recipient));
@@ -107,7 +88,7 @@ export async function sendBtcSegwitSingleSig(opts: SendBtc) {
   const { coins, fee, total } = await selectCoins(opts.amount, client, weightFn);
   const senderPayment = config.wpkhPayment;
 
-  const tx = new ScureTransaction();
+  const tx = new Transaction();
 
   coins.forEach(coin => {
     tx.addInput({
@@ -139,106 +120,14 @@ export async function sendBtcSegwitSingleSig(opts: SendBtc) {
 
   validateMaxSize(tx, opts.maxSize);
 
-  const txid = await tryBroadcastScure(client, tx);
+  const txid = await tryBroadcast(client, tx);
   if (txid) {
     logger.debug({ ...logOpts, txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
   }
   return tx.id;
 }
 
-export async function sendBtcSingleSig(opts: SendBtc) {
-  const { client, ...logOpts } = opts;
-  const config = c();
-  const recipient = Address(config.scureBtcNetwork).encode(OutScript.decode(opts.recipient));
-  // const outputScript = OutScript.encode(Address(config.scureBtcNetwork).decode(opts.recipient));
-  const weightFn = pkhCoinSelectWeightFn(opts.recipient);
-  const { coins, fee, total } = await selectCoins(opts.amount, client, weightFn);
-  const network = getBtcNetwork();
-
-  const psbt = new Psbt({ network });
-  const { output, address } = getBtcPayment();
-  const signer = getBtcSigner();
-  if (!output || !address) throw new Error('Unable to get redeem script of wallet.');
-  psbt.addInputs(
-    coins.map(coin => {
-      return {
-        hash: coin.tx_hash,
-        index: coin.tx_pos,
-        // redeemScript: output,
-        nonWitnessUtxo: coin.hex,
-      };
-    })
-  );
-
-  const change = total - opts.amount - fee;
-  psbt.addOutput({
-    address: recipient,
-    value: Number(opts.amount),
-  });
-  psbt.addOutput({
-    address,
-    value: Number(change),
-  });
-
-  await psbt.signAllInputsAsync(signer);
-
-  psbt.finalizeAllInputs();
-
-  const final = psbt.extractTransaction();
-  const hex = hexToBytes(final.toHex());
-  if (isNotNullish(opts.maxSize) && hex.length > opts.maxSize) {
-    logger.error(
-      {
-        topic: 'btcTxSize',
-        maxSize: opts.maxSize,
-        txSize: hex.length,
-      },
-      `Unable to send BTC - tx of size ${hex.length} bytes is over ${opts.maxSize} bytes`
-    );
-    throw new Error(
-      `Unable to send BTC - tx of size ${hex.length} bytes is over ${opts.maxSize} bytes`
-    );
-  }
-  const txid = await tryBroadcast(client, final);
-  if (txid) {
-    logger.debug({ ...logOpts, txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
-  }
-  return final.getId();
-}
-
 export async function tryBroadcast(client: ElectrumClient, tx: Transaction) {
-  const id = tx.getId();
-  try {
-    await client.blockchain_transaction_broadcast(tx.toHex());
-    const amount = tx.outs[0].value;
-    logger.info(
-      {
-        topic: 'btcBroadcast',
-        txid: id,
-        txUrl: getBtcTxUrl(id),
-        amount,
-      },
-      `Broadcasted BTC tx ${id}`
-    );
-    return id;
-  } catch (error) {
-    logger.error({ broadcastError: error, txId: id }, `Error broadcasting: ${id}`);
-    if (typeof error === 'string' && !error.includes('Transaction already in block chain')) {
-      if (
-        error.includes('Transaction already in block chain') ||
-        error.includes('inputs-missingorspent')
-      ) {
-        logger.debug(`Already broadcasted redeem in ${id}`);
-        await client.close();
-        return;
-      }
-    }
-    await client.close();
-    throw error;
-  }
-}
-
-export async function tryBroadcastScure(client: ElectrumClient, tx: ScureTransaction) {
   const id = tx.id;
   try {
     await client.blockchain_transaction_broadcast(tx.hex);
