@@ -7,7 +7,7 @@ services:
   - type: web
     name: supplier-server-web
     env: node
-    buildCommand: 'pnpm'
+    buildCommand: 'pnpm install'
     startCommand: 'pnpm server'
     autoDeploy: false
     envVars:
@@ -25,7 +25,7 @@ services:
   - type: worker
     name: supplier-server-worker
     env: node
-    buildCommand: 'pnpm'
+    buildCommand: 'pnpm install'
     startCommand: 'pnpm worker'
     autoDeploy: false
     envVars:
