@@ -7,8 +7,8 @@ services:
   - type: web
     name: supplier-server-web
     env: node
-    buildCommand: 'yarn'
-    startCommand: 'yarn server'
+    buildCommand: 'pnpm'
+    startCommand: 'pnpm server'
     autoDeploy: false
     envVars:
       - fromGroup: nodejs
@@ -25,8 +25,8 @@ services:
   - type: worker
     name: supplier-server-worker
     env: node
-    buildCommand: 'yarn'
-    startCommand: 'yarn worker'
+    buildCommand: 'pnpm'
+    startCommand: 'pnpm worker'
     autoDeploy: false
     envVars:
       - fromGroup: nodejs

@@ -55,7 +55,7 @@
     "follow-redirects": "^1.15.1",
     "inquirer": "^8.2.0",
     "ioredis": "^5.3.2",
-    "magic-protocol": "2.0.0-beta.1",
+    "magic-protocol": "2.0.0-beta.3",
     "micro-packed": "^0.3.2",
     "micro-stacks": "0.3.0",
     "noble-secp256k1": "^1.2.14",
