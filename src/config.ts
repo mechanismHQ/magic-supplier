@@ -271,8 +271,8 @@ export class ServerConfig {
     switch (networkKey) {
       case 'testnet':
         return {
-          host: defaultHost || 'electrum.blockstream.info',
-          port: defaultPort === undefined ? 60002 : defaultPort,
+          host: defaultHost || 'testnet.hsmiths.com',
+          port: defaultPort === undefined ? 53012 : defaultPort,
           protocol: defaultProtocol || 'ssl',
         };
       case 'mocknet':
