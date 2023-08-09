@@ -314,7 +314,7 @@ export class ServerConfig {
     };
   }
 
-  logConfig(config: Record<string, string | number>) {
+  logConfig(config: Record<string, string | number | boolean>) {
     // const electrumConfig = this.electrumConfig;
     logger.debug(
       { ...config, electrumConfig: this.electrumConfig, topic: 'start' },

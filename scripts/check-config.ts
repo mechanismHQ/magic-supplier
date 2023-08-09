@@ -20,7 +20,7 @@ async function run() {
       await config.validateKeysMatch();
     } else {
       const configKeys = config.validateKeys();
-      logConfig(configKeys);
+      config.logConfig(configKeys);
       logger.debug('No SUPPLIER_ID - skipping supplier registration check.');
     }
     const contracts = getContracts();
