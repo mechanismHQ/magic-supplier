@@ -33,7 +33,7 @@ specifiers:
   cross-fetch: ^3.1.5
   dotenv: ^16.0.3
   dotenv-flow: ^3.2.0
-  electrum-client-sl: 0.1.2
+  electrum-client-sl: 0.1.4
   eslint: '7'
   eslint-plugin-prettier: ^3.1.4
   eslint-plugin-unused-imports: 2.0.0
@@ -78,7 +78,7 @@ dependencies:
   bull: 4.10.4
   config: 3.3.9
   cross-fetch: 3.1.5
-  electrum-client-sl: 0.1.2
+  electrum-client-sl: 0.1.4
   fastify: 4.2.0
   fastify-plugin: 4.5.0
   fastify-type-provider-zod: 1.1.9_fastify@4.2.0+zod@3.21.4
@@ -3124,8 +3124,8 @@ packages:
     resolution: {integrity: sha512-9kV/isoOGpKkBt04yYNaSWIBn3187Q5VZRtoReq8oz5NY/A4XmU6cAoqgQlDp7kKJCZMRjWZ8nsQyxfpFHvfyw==}
     dev: true
 
-  /electrum-client-sl/0.1.2:
-    resolution: {integrity: sha512-sbfrE7cZ0NSu3jAd0A1B2s62lrkoFU9DyiWx609604G3ocb5mqrFP2eyZ6+EZyUJJE0bdhnjr7nFynrYXUl67g==}
+  /electrum-client-sl/0.1.4:
+    resolution: {integrity: sha512-tnBNbMvIJ6uCglby93i0JIOfWyr7Ch/MYXtCX4X4me+axS85fBwX8L4AKhLRslaAw4fUwnL0IE8fdLPhKABKQQ==}
     engines: {node: '>=6'}
     dependencies:
       websocket: 1.0.34
