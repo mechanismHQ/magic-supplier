@@ -18,6 +18,7 @@ import {
 import { Address, OutScript, Transaction } from '@scure/btc-signer';
 import { sendBtcMultiSig } from '../multi-sig/wallet';
 import { hex } from '@scure/base';
+import { outputToAddress } from 'magic-protocol';
 
 export type TxWeightFunction = (inputs: number) => bigint;
 
@@ -122,7 +123,13 @@ export async function sendBtcSingleSig(opts: SendBtc) {
 
   const txid = await tryBroadcast(client, tx);
   if (txid) {
-    logger.debug({ ...logOpts, txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
+    logger.debug({
+      ...logOpts,
+      recipient: outputToAddress(logOpts.recipient, config.btcNetwork),
+      txid,
+      txUrl: getBtcTxUrl(txid),
+      topic: 'sendBtc',
+    });
   }
   return tx.id;
 }

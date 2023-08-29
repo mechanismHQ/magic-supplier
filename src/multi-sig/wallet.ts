@@ -8,6 +8,7 @@ import { logger } from '../logger';
 import { getBtcTxUrl, isNotNullish } from '../utils';
 // import { fetch } from 'cross-fetch';
 import axios from 'axios';
+import { outputToAddress } from 'magic-protocol';
 
 function getSizeOfScriptLengthElement(length: number) {
   if (length < 75) {
@@ -181,7 +182,14 @@ export async function sendBtcMultiSig({
 
   const txid = await tryBroadcast(client, txFinal);
   if (txid) {
-    logger.debug({ txid, txUrl: getBtcTxUrl(txid), topic: 'sendBtc' });
+    logger.debug({
+      txid,
+      amount,
+      swapId,
+      recipient: outputToAddress(recipient, config.btcNetwork),
+      txUrl: getBtcTxUrl(txid),
+      topic: 'sendBtc',
+    });
   }
   return txFinal.id;
 }
