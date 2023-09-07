@@ -21,6 +21,8 @@ services:
         value: monitor
       - key: WEB_UI_PASSWORD
         sync: false
+      - key: NODE_VERSION
+        value: 18.17.1
 
   - type: worker
     name: supplier-server-worker
