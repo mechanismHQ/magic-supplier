@@ -1,20 +1,20 @@
 import { api } from '../src';
 import { logger } from '../src/logger';
 
-async function run() {
-  const server = await api();
-
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
-
-  await server.listen({
-    port,
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3002;
+logger.info({ port }, 'Starting server');
+const app = await api();
+logger.info('App built, about to listen');
+app.listen(
+  {
     host: '0.0.0.0',
-  });
-  logger.info({ topic: 'serverStart' }, `API listening on http://localhost:${port}`);
-}
-
-run()
-  .catch(console.error)
-  .finally(() => {
-    // process.exit();
-  });
+    port,
+  },
+  (err, address) => {
+    if (err) {
+      app.log.error(err);
+      process.exit(1);
+    }
+    logger.info({ address }, `Listening at ${address}`);
+  }
+);
