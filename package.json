@@ -6,6 +6,7 @@
   "scripts": {
     "r": "DOTENV_FLOW_SILENT=true NODE_ENV=development tsx -r dotenv-flow/config",
     "rt": "DOTENV_FLOW_SILENT=true NODE_ENV=testnet tsx -r dotenv-flow/config",
+    "rp": "DOTENV_FLOW_SILENT=true NODE_ENV=production tsx -r dotenv-flow/config",
     "dev": "NODE_ENV=development pnpm r scripts/worker.ts",
     "start": "tsx scripts/server.ts",
     "server": "tsx scripts/server.ts",
