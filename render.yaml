@@ -8,7 +8,7 @@ services:
     name: supplier-server-web
     env: node
     buildCommand: 'pnpm install'
-    startCommand: 'pnpm server'
+    startCommand: 'npx tsx scripts/server.ts'
     autoDeploy: false
     envVars:
       - fromGroup: nodejs
