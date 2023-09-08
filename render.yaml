@@ -47,6 +47,8 @@ services:
         value: worker
       - key: SUPPLIER_NETWORK
         sync: false
+      - key: NODE_VERSION
+        value: 18.17.1
 
 envVarGroups:
   - name: nodejs
