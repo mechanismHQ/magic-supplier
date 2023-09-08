@@ -3,7 +3,7 @@ import BasicAuth, { FastifyBasicAuthOptions } from '@fastify/basic-auth';
 import { logger } from './logger';
 import { bullRoute } from './routes/bull-adapter';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod';
-import { ConfigInit } from './config';
+import { ConfigInit, isMonitor } from './config';
 import { ConfigPlugin } from './plugins/config';
 import { multiSigRouter } from './routes/multi-sig-router';
 
@@ -20,7 +20,10 @@ export const api = async (config?: Partial<ConfigInit>) => {
   const server = Fastify({ logger }).withTypeProvider<ZodTypeProvider>();
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
-  await server.register(ConfigPlugin, config);
+
+  if (!isMonitor()) {
+    await server.register(ConfigPlugin, config);
+  }
 
   await server.register(BasicAuth, { validate });
 

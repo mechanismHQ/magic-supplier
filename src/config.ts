@@ -370,6 +370,14 @@ export class ServerConfig {
   }
 }
 
+/**
+ *
+ * @returns true if this is not the worker process
+ */
+export function isMonitor() {
+  return process.env.SUPPLIER_SERVICE_TYPE === 'monitor';
+}
+
 export function getEnv(key: string) {
   return ServerConfig.getEnv(key);
 }
