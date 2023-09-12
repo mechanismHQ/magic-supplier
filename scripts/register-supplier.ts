@@ -55,6 +55,7 @@ async function run() {
   console.log(`xBTC Balance: ${xbtcBalance} xBTC`);
   console.log(`BTC Balance: ${btcBalance} BTC`);
   console.log(`Network: ${networkKey}`);
+  console.log(`Magic contract: ${bridge.identifier}`);
   console.log(`Stacks node: ${network.getCoreApiUrl()}`);
 
   const answers = await prompt<Answers>([
